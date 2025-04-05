@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "description": "Fitness Tracker API backend",
   "main": "server.js",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "vercel-build": "echo 'Backend build success'"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

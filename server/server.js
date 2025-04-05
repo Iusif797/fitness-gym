@@ -17,7 +17,19 @@ const settings = require("./routes/settings");
 const app = express();
 
 // Middleware
-app.use(cors()); // Разрешаем CORS запросы (настроить более строго для продакшена)
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === "production"
+        ? [
+            "https://fitness-five-xi.vercel.app",
+            "https://fitness-gym.vercel.app",
+            "https://fitness-gym-iusif797.vercel.app",
+          ]
+        : "http://localhost:3000",
+    credentials: true,
+  })
+);
 app.use(express.json()); // Для парсинга JSON тел запросов
 
 // Монтирование маршрутов
@@ -49,18 +61,12 @@ app.use("*", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(
-  PORT,
-  console.log(
-    `Server running in ${
-      process.env.NODE_ENV || "development"
-    } mode on port ${PORT}`
-  )
-);
+// Только запускаем сервер если это не Vercel (там запуск происходит автоматически)
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
 
-// Обработка ошибок незахваченных промисов
-process.on("unhandledRejection", (err, promise) => {
-  console.error(`Ошибка: ${err.message}`);
-  // Закрыть сервер и выйти из процесса
-  server.close(() => process.exit(1));
-});
+// Добавляем экспорт app для Vercel
+module.exports = app;

@@ -4,6 +4,12 @@ import i18n from "i18next";
 
 const AuthContext = createContext(null);
 
+// Добавляем определение базового URL
+const API_URL =
+  process.env.NODE_ENV === "production"
+    ? "/api" // В продакшене используем относительный путь, который будет обрабатываться через Vercel
+    : "http://localhost:5000/api"; // В разработке используем абсолютный URL
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true); // Начальная загрузка состояния пользователя
@@ -17,7 +23,7 @@ export const AuthProvider = ({ children }) => {
         // Устанавливаем токен в заголовки axios по умолчанию
         axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
         try {
-          const res = await axios.get("/api/auth/me"); // Запрос к бэкенду для получения данных пользователя
+          const res = await axios.get(`${API_URL}/auth/me`); // Используем API_URL вместо захардкоженного пути
           setUser(res.data.data); // Предполагаем, что данные пользователя в res.data.data
 
           // Устанавливаем язык из настроек пользователя если есть
@@ -44,16 +50,18 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Функция регистрации
-  const register = async (formData) => {
+  const register = async (userData) => {
+    setLoading(true);
     setError(null);
+
     try {
-      const res = await axios.post("/api/auth/register", formData);
+      const res = await axios.post(`${API_URL}/auth/register`, userData);
       localStorage.setItem("token", res.data.token);
       axios.defaults.headers.common[
         "Authorization"
       ] = `Bearer ${res.data.token}`;
       // После успешной регистрации сразу загружаем пользователя
-      const userRes = await axios.get("/api/auth/me");
+      const userRes = await axios.get(`${API_URL}/auth/me`);
       setUser(userRes.data.data);
 
       // Устанавливаем язык из настроек пользователя если есть
@@ -74,16 +82,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Функция входа
-  const login = async (formData) => {
+  const login = async (userData) => {
+    setLoading(true);
     setError(null);
+
     try {
-      const res = await axios.post("/api/auth/login", formData);
+      const res = await axios.post(`${API_URL}/auth/login`, userData);
       localStorage.setItem("token", res.data.token);
       axios.defaults.headers.common[
         "Authorization"
       ] = `Bearer ${res.data.token}`;
       // После успешного входа загружаем пользователя
-      const userRes = await axios.get("/api/auth/me");
+      const userRes = await axios.get(`${API_URL}/auth/me`);
       setUser(userRes.data.data);
 
       // Устанавливаем язык из настроек пользователя если есть
@@ -104,21 +114,31 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Функция выхода
-  const logout = () => {
-    setError(null);
+  const logout = async () => {
     localStorage.removeItem("token");
-    delete axios.defaults.headers.common["Authorization"];
     setUser(null);
-    // Можно добавить редирект на главную или страницу входа
-    // window.location.href = '/login';
   };
 
   // Функция обновления настроек пользователя (теперь через API)
-  const updateUserSettings = async (newSettings) => {
-    if (!user) return; // Только для залогиненных
+  const updateUserSettings = async (settings) => {
+    setLoading(true);
     setError(null);
+
     try {
-      const res = await axios.put("/api/settings", newSettings);
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("No authentication token");
+      }
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+
+      const res = await axios.put(`${API_URL}/auth/settings`, settings, config);
+
       // Обновляем пользователя в состоянии контекста
       setUser((prevUser) => ({
         ...prevUser,
@@ -126,8 +146,8 @@ export const AuthProvider = ({ children }) => {
       }));
 
       // Обновляем язык если он изменился
-      if (newSettings.language) {
-        i18n.changeLanguage(newSettings.language);
+      if (settings.language) {
+        i18n.changeLanguage(settings.language);
       }
     } catch (err) {
       const message =

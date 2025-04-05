@@ -9,6 +9,12 @@ import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import { useAuth } from "./AuthContext"; // Импортируем хук useAuth
 
+// Добавляем определение базового URL
+const API_URL =
+  process.env.NODE_ENV === "production"
+    ? "/api" // В продакшене используем относительный путь, который будет обрабатываться через Vercel
+    : "http://localhost:5000/api"; // В разработке используем абсолютный URL
+
 // Создаем контекст
 export const WorkoutContext = createContext(null);
 
@@ -41,10 +47,19 @@ export const WorkoutProvider = ({ children }) => {
 
     const loadWorkouts = async () => {
       try {
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("No auth token");
+
+        const config = {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        };
+
         if (isAuthenticated) {
           // Загрузка с API для авторизованного пользователя
           console.log("Loading workouts from API for user:", user?._id);
-          const res = await axios.get("/api/workouts");
+          const res = await axios.get(`${API_URL}/workouts`, config);
           setWorkouts(res.data.data || []);
         } else {
           // Загрузка из localStorage для анонимного пользователя
@@ -137,26 +152,22 @@ export const WorkoutProvider = ({ children }) => {
 
   // Добавление новой тренировки
   const addWorkout = async (workoutData) => {
+    setLoading(true);
     setError(null);
+
     try {
-      let newWorkout;
-      if (isAuthenticated) {
-        // Отправляем на API
-        console.log("Adding workout via API");
-        const res = await axios.post("/api/workouts", workoutData);
-        newWorkout = res.data.data;
-        setWorkouts((prev) => [newWorkout, ...prev]);
-      } else {
-        // Добавляем в localStorage
-        console.log("Adding workout to localStorage (anonymous)");
-        newWorkout = {
-          _id: uuidv4(), // Генерируем временный ID для localStorage
-          date: new Date().toISOString(),
-          ...workoutData,
-        };
-        setWorkouts((prev) => [newWorkout, ...prev]);
-        // Сохранение произойдет в useEffect [workouts]
-      }
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No auth token");
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+
+      const res = await axios.post(`${API_URL}/workouts`, workoutData, config);
+      const newWorkout = res.data.data;
+      setWorkouts((prev) => [newWorkout, ...prev]);
       return true;
     } catch (err) {
       const message = err.response?.data?.message || "Failed to add workout";
@@ -183,14 +194,16 @@ export const WorkoutProvider = ({ children }) => {
     }
 
     try {
-      if (isAuthenticated) {
-        // Удаляем через API
-        console.log(`Deleting workout ${id} via API`);
-        await axios.delete(`/api/workouts/${id}`);
-      } else {
-        // Удаляем из localStorage (сохранение произойдет в useEffect)
-        console.log(`Deleting workout ${id} from localStorage (anonymous)`);
-      }
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No auth token");
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+
+      await axios.delete(`${API_URL}/workouts/${id}`, config);
       // Оптимистичное удаление из UI
       setWorkouts((prev) =>
         prev.filter((workout) => (workout._id || workout.id) !== id)
@@ -207,18 +220,25 @@ export const WorkoutProvider = ({ children }) => {
 
   // Обновление тренировки (пока не реализовано в UI, но можно добавить)
   const updateWorkout = async (id, updatedData) => {
+    setLoading(true);
     setError(null);
+
     try {
-      let updatedWorkout;
-      if (isAuthenticated) {
-        const res = await axios.put(`/api/workouts/${id}`, updatedData);
-        updatedWorkout = res.data.data;
-      } else {
-        // Обновление в localStorage
-        const workoutIndex = workouts.findIndex((w) => (w._id || w.id) === id);
-        if (workoutIndex === -1) throw new Error("Workout not found locally");
-        updatedWorkout = { ...workouts[workoutIndex], ...updatedData };
-      }
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No auth token");
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+
+      const res = await axios.put(
+        `${API_URL}/workouts/${id}`,
+        updatedData,
+        config
+      );
+      const updatedWorkout = res.data.data;
       setWorkouts((prev) =>
         prev.map((w) => ((w._id || w.id) === id ? updatedWorkout : w))
       );
@@ -240,22 +260,24 @@ export const WorkoutProvider = ({ children }) => {
       )
     ) {
       try {
-        if (isAuthenticated) {
-          // TODO: Реализовать эндпоинт для очистки всех тренировок пользователя?
-          // Пока удаляем по одной
-          setLoading(true);
-          const promises = workouts.map((w) =>
-            axios.delete(`/api/workouts/${w._id}`)
-          );
-          await Promise.all(promises);
-          setWorkouts([]);
-          console.log("Cleared all workouts via API");
-        } else {
-          setWorkouts([]);
-          localStorage.removeItem("anonymousWorkouts");
-          console.log("Cleared all anonymous workouts from localStorage");
-        }
-        return true;
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("No auth token");
+
+        const config = {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        };
+
+        // TODO: Реализовать эндпоинт для очистки всех тренировок пользователя?
+        // Пока удаляем по одной
+        setLoading(true);
+        const promises = workouts.map((w) =>
+          axios.delete(`${API_URL}/workouts/${w._id}`, config)
+        );
+        await Promise.all(promises);
+        setWorkouts([]);
+        console.log("Cleared all workouts via API");
       } catch (err) {
         const message =
           err.response?.data?.message || "Failed to clear workouts";
