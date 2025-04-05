@@ -9,15 +9,16 @@ dotenv.config();
 // Проверяем переменные окружения для MongoDB
 if (!process.env.MONGODB_URI) {
   console.warn("ВНИМАНИЕ: Переменная окружения MONGODB_URI не найдена");
-  // Установка запасного значения для локальной разработки
-  process.env.MONGODB_URI = "mongodb://localhost:27017/fitness-tracker";
+  // Устанавливаем значение MongoDB Atlas для проекта
+  process.env.MONGODB_URI =
+    "mongodb+srv://fytness-gym:13579@fitness-gym.d4t5mhn.mongodb.net/?retryWrites=true&w=majority&appName=fitness-gym";
 }
 
 // Проверяем переменные окружения для JWT
 if (!process.env.JWT_SECRET) {
   console.warn("ВНИМАНИЕ: Переменная окружения JWT_SECRET не найдена");
-  // Установка запасного значения для разработки
-  process.env.JWT_SECRET = "development_secret_key_not_for_production";
+  // Устанавливаем запасное значение для разработки
+  process.env.JWT_SECRET = "fytness-gym-secret-key-2024";
 }
 
 // Логируем информацию о подключении (без пароля)
@@ -42,15 +43,7 @@ const app = express();
 // Middleware
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? [
-            "https://fitness-five-xi.vercel.app",
-            "https://fitness-react-a00y9mpvy-yosefs-projects-05866a03.vercel.app",
-            "https://fitness-gym.vercel.app",
-            "https://fitness-gym-iusif797.vercel.app",
-          ]
-        : "http://localhost:3000",
+    origin: "*", // Разрешаем все домены
     credentials: true,
   })
 );
@@ -86,6 +79,7 @@ app.use("*", (req, res) => {
   res.status(404).json({
     success: false,
     message: "Маршрут не найден",
+    path: req.originalUrl,
   });
 });
 
