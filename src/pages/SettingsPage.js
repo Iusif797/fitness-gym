@@ -8,7 +8,6 @@ import {
   Container,
   FormControl,
   FormControlLabel,
-  FormLabel,
   Radio,
   RadioGroup,
   Switch,

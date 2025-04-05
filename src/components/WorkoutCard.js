@@ -12,10 +12,10 @@ import {
 } from "@mui/material";
 import {
   DeleteOutline,
-  Edit,
   CalendarToday,
   Timer,
   LocalFireDepartment,
+  Delete,
 } from "@mui/icons-material";
 import { useTheme } from "@mui/material/styles";
 
