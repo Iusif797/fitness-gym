@@ -46,9 +46,5 @@
       "src": "/(.*)",
       "dest": "/build/index.html"
     }
-  ],
-  "env": {
-    "MONGODB_URI": "@mongodb-uri",
-    "JWT_SECRET": "@jwt-secret"
-  }
+  ]
 } 
