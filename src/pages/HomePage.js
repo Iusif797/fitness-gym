@@ -155,16 +155,18 @@ const HomePage = () => {
   const sidebarContent = (
     <Box
       sx={{
-        width: 280,
-        bgcolor: theme.palette.background.paper,
+        width: 300,
         height: "100%",
         background: `linear-gradient(135deg, ${gradientStart} 0%, ${gradientEnd} 100%)`,
         position: "relative",
         overflow: "hidden",
+        transition: "all 0.3s ease",
+        display: "flex",
+        flexDirection: "column",
       }}
       role="presentation"
     >
-      {/* Декоративный элемент */}
+      {/* Декоративные элементы */}
       <Box
         sx={{
           position: "absolute",
@@ -178,73 +180,130 @@ const HomePage = () => {
             0.2
           )} 0%, rgba(0,0,0,0) 70%)`,
           zIndex: 0,
+          animation: "pulse 15s infinite ease-in-out",
+          "@keyframes pulse": {
+            "0%": { transform: "scale(1)" },
+            "50%": { transform: "scale(1.2)" },
+            "100%": { transform: "scale(1)" },
+          },
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          bottom: 100,
+          right: -100,
+          width: 250,
+          height: 250,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${alpha(
+            highlightColor,
+            0.1
+          )} 0%, rgba(0,0,0,0) 70%)`,
+          zIndex: 0,
+          animation: "float 20s infinite ease-in-out",
+          "@keyframes float": {
+            "0%": { transform: "translateY(0)" },
+            "50%": { transform: "translateY(-20px)" },
+            "100%": { transform: "translateY(0)" },
+          },
         }}
       />
 
+      {/* Шапка */}
       <Box
         sx={{
+          p: 3,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          mb: 3,
-          mt: 4,
           position: "relative",
           zIndex: 1,
+          mb: 2,
         }}
       >
-        {isAuthenticated && user ? (
+        {isAuthenticated ? (
           <>
             <Avatar
               sx={{
                 width: 90,
                 height: 90,
-                bgcolor: highlightColor,
-                mb: 2,
-                boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                border: `4px solid ${theme.palette.background.paper}`,
+                bgcolor: alpha(theme.palette.primary.main, 0.9),
                 fontSize: "2rem",
+                fontWeight: "bold",
+                mb: 2,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                border: `3px solid ${theme.palette.background.paper}`,
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  transform: "scale(1.05)",
+                  boxShadow: "0 12px 28px rgba(0,0,0,0.2)",
+                },
+              }}
+              onClick={handleProfile}
+            >
+              {user?.name.charAt(0).toUpperCase()}
+            </Avatar>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: "bold",
+                textAlign: "center",
+                color: theme.palette.mode === "dark" ? "#fff" : "#333",
+                textShadow: "0 2px 10px rgba(0,0,0,0.1)",
               }}
             >
-              {user.name.charAt(0).toUpperCase()}
-            </Avatar>
-            <Typography variant="h5" align="center" sx={{ fontWeight: "bold" }}>
-              {user.name}
+              {t("common.welcome")}, {user?.name}!
             </Typography>
-            <Typography variant="body2" color="text.secondary" align="center">
-              {user.email}
-            </Typography>
-
-            <Box sx={{ display: "flex", mt: 2, gap: 1 }}>
-              <Chip
-                icon={<FitnessCenterIcon />}
-                label={`${userStats.totalWorkouts} ${t("home.totalWorkouts")}`}
-                size="small"
-                sx={{
-                  bgcolor: alpha(theme.palette.primary.main, 0.1),
-                  color: theme.palette.primary.main,
-                  fontWeight: 500,
-                }}
-              />
+            <Box
+              sx={{
+                mt: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{ opacity: 0.7, textAlign: "center" }}
+              >
+                {t("home.lastLogin")}:{" "}
+                {format(new Date(), "PPP", { locale: dateLocale })}
+              </Typography>
             </Box>
           </>
         ) : (
-          <Box sx={{ textAlign: "center", py: 3 }}>
-            <FitnessCenterIcon
-              sx={{ fontSize: 60, color: highlightColor, mb: 2 }}
-            />
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: "bold" }}>
-              {t("common.appName")}
+          <Box
+            sx={{
+              p: 3,
+              textAlign: "center",
+              background: `linear-gradient(135deg, ${alpha(
+                highlightColor,
+                0.1
+              )} 0%, ${alpha(theme.palette.background.paper, 0.2)} 100%)`,
+              borderRadius: 2,
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              {t("auth.notLoggedIn")}
             </Typography>
             <Button
               variant="contained"
-              startIcon={<LoginIcon />}
+              fullWidth
               onClick={handleLogin}
               sx={{
-                mt: 2,
-                backgroundImage: `linear-gradient(45deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
-                borderRadius: "24px",
-                px: 3,
+                borderRadius: "12px",
+                py: 1.2,
+                textTransform: "none",
+                fontWeight: "bold",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                transition: "all 0.3s ease",
+                background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                "&:hover": {
+                  transform: "translateY(-2px)",
+                  boxShadow: "0 6px 16px rgba(0,0,0,0.2)",
+                },
               }}
             >
               {t("auth.login")}
@@ -253,15 +312,16 @@ const HomePage = () => {
         )}
       </Box>
 
-      <Divider
+      {/* Основное меню */}
+      <List
         sx={{
-          my: 2,
-          mx: 3,
-          opacity: 0.6,
+          px: 2,
+          py: 1,
+          flex: 1,
+          position: "relative",
+          zIndex: 1,
         }}
-      />
-
-      <List sx={{ px: 2 }}>
+      >
         <ListItem
           button
           onClick={() => {
@@ -269,20 +329,34 @@ const HomePage = () => {
             navigate("/");
           }}
           sx={{
-            borderRadius: 2,
-            mb: 1,
-            bgcolor:
-              theme.palette.mode === "dark"
-                ? alpha(theme.palette.primary.main, 0.1)
-                : alpha(theme.palette.primary.main, 0.08),
+            borderRadius: 3,
+            mb: 1.5,
+            bgcolor: alpha(theme.palette.primary.main, 0.1),
+            boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+            transition: "all 0.3s ease",
+            "&:hover": {
+              transform: "translateX(5px)",
+              bgcolor: alpha(theme.palette.primary.main, 0.15),
+              boxShadow: "0 6px 16px rgba(0,0,0,0.1)",
+            },
+            p: 1.5,
           }}
         >
           <ListItemIcon>
-            <HomeIcon sx={{ color: highlightColor }} />
+            <HomeIcon
+              sx={{
+                color: highlightColor,
+                fontSize: "1.8rem",
+                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
+              }}
+            />
           </ListItemIcon>
           <ListItemText
             primary={t("home.home")}
-            primaryTypographyProps={{ fontWeight: "medium" }}
+            primaryTypographyProps={{
+              fontWeight: "bold",
+              fontSize: "1.1rem",
+            }}
           />
         </ListItem>
 
@@ -290,20 +364,35 @@ const HomePage = () => {
           button
           onClick={handleSettings}
           sx={{
-            borderRadius: 2,
-            mb: 1,
+            borderRadius: 3,
+            mb: 1.5,
+            transition: "all 0.3s ease",
             "&:hover": {
-              bgcolor:
-                theme.palette.mode === "dark"
-                  ? alpha(theme.palette.primary.main, 0.1)
-                  : alpha(theme.palette.primary.main, 0.08),
+              transform: "translateX(5px)",
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              boxShadow: "0 4px 12px rgba(0,0,0,0.07)",
             },
+            p: 1.5,
           }}
         >
           <ListItemIcon>
-            <SettingsIcon sx={{ color: theme.palette.text.secondary }} />
+            <SettingsIcon
+              sx={{
+                color:
+                  theme.palette.mode === "dark"
+                    ? "rgba(255,255,255,0.7)"
+                    : "rgba(0,0,0,0.6)",
+                fontSize: "1.8rem",
+              }}
+            />
           </ListItemIcon>
-          <ListItemText primary={t("settings.settings")} />
+          <ListItemText
+            primary={t("settings.settings")}
+            primaryTypographyProps={{
+              fontWeight: "medium",
+              fontSize: "1.1rem",
+            }}
+          />
         </ListItem>
 
         {isAuthenticated && (
@@ -312,90 +401,151 @@ const HomePage = () => {
               button
               onClick={handleCalendar}
               sx={{
-                borderRadius: 2,
-                mb: 1,
+                borderRadius: 3,
+                mb: 1.5,
+                transition: "all 0.3s ease",
                 "&:hover": {
-                  bgcolor:
-                    theme.palette.mode === "dark"
-                      ? alpha(theme.palette.primary.main, 0.1)
-                      : alpha(theme.palette.primary.main, 0.08),
+                  transform: "translateX(5px)",
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.07)",
                 },
+                p: 1.5,
               }}
             >
               <ListItemIcon>
-                <CalendarIcon sx={{ color: theme.palette.text.secondary }} />
+                <CalendarIcon
+                  sx={{
+                    color:
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.7)"
+                        : "rgba(0,0,0,0.6)",
+                    fontSize: "1.8rem",
+                  }}
+                />
               </ListItemIcon>
-              <ListItemText primary={t("home.calendar")} />
+              <ListItemText
+                primary={t("home.calendar")}
+                primaryTypographyProps={{
+                  fontWeight: "medium",
+                  fontSize: "1.1rem",
+                }}
+              />
             </ListItem>
 
             <ListItem
               button
               onClick={handleProfile}
               sx={{
-                borderRadius: 2,
-                mb: 1,
+                borderRadius: 3,
+                mb: 1.5,
+                transition: "all 0.3s ease",
                 "&:hover": {
-                  bgcolor:
-                    theme.palette.mode === "dark"
-                      ? alpha(theme.palette.primary.main, 0.1)
-                      : alpha(theme.palette.primary.main, 0.08),
+                  transform: "translateX(5px)",
+                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.07)",
                 },
+                p: 1.5,
               }}
             >
               <ListItemIcon>
-                <PersonIcon sx={{ color: theme.palette.text.secondary }} />
+                <PersonIcon
+                  sx={{
+                    color:
+                      theme.palette.mode === "dark"
+                        ? "rgba(255,255,255,0.7)"
+                        : "rgba(0,0,0,0.6)",
+                    fontSize: "1.8rem",
+                  }}
+                />
               </ListItemIcon>
-              <ListItemText primary={t("auth.profile")} />
-            </ListItem>
-
-            <ListItem
-              button
-              onClick={handleLogout}
-              sx={{
-                borderRadius: 2,
-                color: theme.palette.error.main,
-                "&:hover": {
-                  bgcolor: alpha(theme.palette.error.main, 0.1),
-                },
-              }}
-            >
-              <ListItemIcon>
-                <LogoutIcon sx={{ color: theme.palette.error.main }} />
-              </ListItemIcon>
-              <ListItemText primary={t("auth.logout")} />
+              <ListItemText
+                primary={t("auth.profile")}
+                primaryTypographyProps={{
+                  fontWeight: "medium",
+                  fontSize: "1.1rem",
+                }}
+              />
             </ListItem>
           </>
         )}
       </List>
 
+      {/* Нижняя часть */}
       <Box
         sx={{
-          position: "absolute",
-          bottom: 24,
-          width: "100%",
-          textAlign: "center",
+          p: 3,
+          position: "relative",
+          zIndex: 1,
         }}
       >
-        <IconButton
-          onClick={handleThemeToggle}
+        {isAuthenticated && (
+          <Button
+            variant="outlined"
+            color="error"
+            fullWidth
+            onClick={handleLogout}
+            startIcon={<LogoutIcon />}
+            sx={{
+              mb: 3,
+              borderRadius: "12px",
+              py: 1.2,
+              textTransform: "none",
+              fontWeight: "medium",
+              borderWidth: 2,
+              transition: "all 0.3s ease",
+              "&:hover": {
+                borderWidth: 2,
+                bgcolor: alpha(theme.palette.error.main, 0.1),
+                transform: "translateY(-2px)",
+              },
+            }}
+          >
+            {t("auth.logout")}
+          </Button>
+        )}
+
+        <Box
           sx={{
-            bgcolor: theme.palette.background.paper,
-            boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
-            color: highlightColor,
-            "&:hover": {
-              bgcolor: alpha(highlightColor, 0.1),
-            },
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            flexDirection: "column",
           }}
         >
-          {theme.palette.mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
-        </IconButton>
-        <Typography
-          variant="caption"
-          display="block"
-          sx={{ mt: 1, opacity: 0.6 }}
-        >
-          {t("common.appName")} v1.0
-        </Typography>
+          <IconButton
+            onClick={handleThemeToggle}
+            sx={{
+              bgcolor: theme.palette.background.paper,
+              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+              color: highlightColor,
+              width: 45,
+              height: 45,
+              transition: "all 0.3s ease",
+              "&:hover": {
+                transform: "rotate(30deg)",
+                bgcolor: alpha(highlightColor, 0.1),
+              },
+            }}
+          >
+            {theme.palette.mode === "dark" ? (
+              <LightModeIcon />
+            ) : (
+              <DarkModeIcon />
+            )}
+          </IconButton>
+          <Typography
+            variant="caption"
+            display="block"
+            sx={{
+              mt: 1.5,
+              opacity: 0.6,
+              textAlign: "center",
+              fontWeight: "medium",
+            }}
+          >
+            {t("common.appName")} v1.0
+          </Typography>
+        </Box>
       </Box>
     </Box>
   );
