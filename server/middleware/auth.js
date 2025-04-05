@@ -23,7 +23,7 @@ const protect = async (req, res, next) => {
       next();
     } catch (error) {
       console.error(error);
-      res.status(401).json({
+      return res.status(401).json({
         success: false,
         message: "Не авторизован, токен недействителен",
       });
@@ -31,7 +31,7 @@ const protect = async (req, res, next) => {
   }
 
   if (!token) {
-    res.status(401).json({
+    return res.status(401).json({
       success: false,
       message: "Не авторизован, нет токена",
     });
