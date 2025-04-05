@@ -510,3 +510,25 @@
     width: 100%;
   }
 }
+
+/* Copyright notice */
+.copyright-notice {
+  text-align: center;
+  margin-top: 2rem;
+  padding: 1rem 0;
+  color: #888;
+  font-size: 0.85rem;
+  font-style: italic;
+  position: relative;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.copyright-notice::before {
+  content: "";
+  display: block;
+  width: 80px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #6c63ff, transparent);
+  margin: 0 auto 10px;
+}

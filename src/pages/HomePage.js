@@ -1096,10 +1096,10 @@ const HomePage = () => {
         }}
         PaperProps={{
           sx: {
-            boxShadow: "0 0 30px rgba(0,0,0,0.15)",
+            boxShadow: "0 0 30px rgba(0,0,0,0.2)",
             width: { xs: "85%", sm: 320 },
-            borderTopRightRadius: 24,
-            borderBottomRightRadius: 24,
+            borderTopRightRadius: "2rem",
+            borderBottomRightRadius: "2rem",
             border: "none",
           },
         }}
@@ -1119,6 +1119,37 @@ const HomePage = () => {
         }}
       >
         {mainContent}
+      </Box>
+
+      {/* Подпись разработчика */}
+      <Box
+        sx={{
+          position: "fixed",
+          bottom: 10,
+          right: 15,
+          zIndex: 10,
+          opacity: 0.7,
+          fontSize: "0.7rem",
+          color: theme.palette.text.secondary,
+          fontStyle: "italic",
+          fontWeight: 500,
+          textAlign: "right",
+          "&:hover": {
+            opacity: 1,
+          },
+        }}
+      >
+        Developed by Iusif Mamedov
+        <Box
+          component="span"
+          sx={{
+            display: "block",
+            fontSize: "0.65rem",
+            mt: 0.5,
+          }}
+        >
+          Premium Fitness App
+        </Box>
       </Box>
 
       {/* Плавающая кнопка добавления тренировки */}

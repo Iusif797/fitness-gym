@@ -155,24 +155,43 @@ export const WorkoutProvider = ({ children }) => {
     setError(null);
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No auth token");
+      if (isAuthenticated) {
+        // Для авторизованных пользователей, отправляем на сервер
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("No auth token");
 
-      const config = {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      };
+        const config = {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        };
 
-      const res = await axios.post(`${API_URL}/workouts`, workoutData, config);
-      const newWorkout = res.data.data;
-      setWorkouts((prev) => [newWorkout, ...prev]);
+        const res = await axios.post(
+          `${API_URL}/workouts`,
+          workoutData,
+          config
+        );
+        const newWorkout = res.data.data;
+        setWorkouts((prev) => [newWorkout, ...prev]);
+      } else {
+        // Для неавторизованных пользователей, сохраняем локально
+        console.log("Adding workout locally (anonymous user)");
+        setWorkouts((prev) => [workoutData, ...prev]);
+        // Сразу сохраняем в localStorage для неавторизованных
+        const updatedWorkouts = [workoutData, ...workouts];
+        localStorage.setItem(
+          "anonymousWorkouts",
+          JSON.stringify(updatedWorkouts)
+        );
+      }
       return true;
     } catch (err) {
       const message = err.response?.data?.message || "Failed to add workout";
       console.error("Add Workout Error:", message);
       setError(message);
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 

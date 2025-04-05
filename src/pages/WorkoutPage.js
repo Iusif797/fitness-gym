@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useWorkout } from "../context/WorkoutContext";
+import { useTranslation } from "react-i18next";
 import {
   FiChevronLeft,
   FiClock,
@@ -28,13 +29,14 @@ import {
   WORKOUT_EQUIPMENT,
   WORKOUT_COLORS,
   CALORIES_PER_MINUTE,
-} from "../constants/workoutConstants";
+} from "../types/workout";
 import "../styles/WorkoutPage.css";
 
 const WorkoutPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { addWorkout } = useWorkout();
+  const { t, i18n } = useTranslation();
 
   // Состояния для формы
   const [selectedType, setSelectedType] = useState("");
@@ -150,7 +152,7 @@ const WorkoutPage = () => {
   // Переключение между шагами
   const goToNextStep = () => {
     if (activeStep === 1 && !selectedType) {
-      setError("Пожалуйста, выберите тип тренировки");
+      setError(t("workout.selectTypeError"));
       return;
     }
 
@@ -166,12 +168,12 @@ const WorkoutPage = () => {
   const handleSave = () => {
     // Валидация
     if (!selectedType) {
-      setError("Выберите тип тренировки");
+      setError(t("workout.selectTypeError"));
       return;
     }
 
     if (duration <= 0) {
-      setError("Укажите длительность тренировки");
+      setError(t("workout.durationRequired"));
       return;
     }
 
@@ -181,7 +183,7 @@ const WorkoutPage = () => {
     const workout = {
       id: Date.now().toString(),
       type: selectedType,
-      name: workoutName || WORKOUT_LABELS[selectedType],
+      name: workoutName || t(`workout.workoutTypes.${selectedType}`),
       duration,
       calories,
       date: new Date().toISOString(),
@@ -197,6 +199,11 @@ const WorkoutPage = () => {
     }, 800); // Искусственная задержка для анимации
   };
 
+  // Получаем переведенное название типа тренировки
+  const getLocalizedWorkoutLabel = (type) => {
+    return t(`workout.workoutTypes.${type}`);
+  };
+
   // Рендеринг содержимого в зависимости от шага
   const renderStepContent = () => {
     switch (activeStep) {
@@ -204,7 +211,7 @@ const WorkoutPage = () => {
         return (
           <div className="workout-step workout-step-1 fade-in">
             <h2 className="step-title">
-              <span className="step-number">1</span> Выберите тип тренировки
+              <span className="step-number">1</span> {t("workout.selectType")}
             </h2>
 
             <div className="workout-types-grid">
@@ -243,7 +250,7 @@ const WorkoutPage = () => {
                     {getWorkoutIcon(type)}
                   </div>
                   <div className="workout-type-name">
-                    {WORKOUT_LABELS[type]}
+                    {getLocalizedWorkoutLabel(type)}
                   </div>
                 </div>
               ))}
@@ -255,14 +262,14 @@ const WorkoutPage = () => {
                 onClick={() => navigate("/")}
               >
                 <FiChevronLeft />
-                Отмена
+                {t("common.cancel")}
               </button>
               <button
                 className="btn btn-primary btn-next"
                 onClick={goToNextStep}
                 disabled={!selectedType}
               >
-                Далее
+                {t("workout.next")}
                 <FiCheck />
               </button>
             </div>
@@ -273,21 +280,24 @@ const WorkoutPage = () => {
         return (
           <div className="workout-step workout-step-2 fade-in">
             <h2 className="step-title">
-              <span className="step-number">2</span> Настройте тренировку
+              <span className="step-number">2</span>{" "}
+              {t("workout.configureWorkout")}
             </h2>
 
             <div className="form-row">
               <div className="form-group workout-name-group">
                 <label className="form-label">
                   <FiType />
-                  Название тренировки
+                  {t("workout.name")}
                 </label>
                 <input
                   type="text"
                   className="form-control"
                   value={workoutName}
                   onChange={(e) => setWorkoutName(e.target.value)}
-                  placeholder={`${WORKOUT_LABELS[selectedType]} тренировка`}
+                  placeholder={`${getLocalizedWorkoutLabel(selectedType)} ${t(
+                    "workout.workout"
+                  ).toLowerCase()}`}
                 />
               </div>
             </div>
@@ -295,13 +305,15 @@ const WorkoutPage = () => {
             {/* Переключатель таймера */}
             <div className="form-row">
               <div className="form-group timer-toggle-group">
-                <label className="form-label">Таймер тренировки</label>
+                <label className="form-label">
+                  {t("workout.workoutTimer")}
+                </label>
                 <button
                   className={`btn ${useTimer ? "btn-primary" : "btn-outline"}`}
                   onClick={toggleTimer}
                 >
                   {useTimer ? <FiX /> : <FiClock />}
-                  {useTimer ? "Выключить таймер" : "Использовать таймер"}
+                  {useTimer ? t("workout.disableTimer") : t("workout.useTimer")}
                 </button>
               </div>
             </div>
@@ -315,7 +327,7 @@ const WorkoutPage = () => {
                 <div className="form-group duration-group">
                   <label className="form-label">
                     <FiClock />
-                    Длительность (минуты)
+                    {t("workout.duration")} ({t("workout.minutes")})
                   </label>
                   <input
                     type="number"
@@ -330,7 +342,7 @@ const WorkoutPage = () => {
                 <div className="form-group calories-group">
                   <label className="form-label">
                     <FiZap />
-                    Калории
+                    {t("workout.calories")}
                   </label>
                   <input
                     type="number"
@@ -348,9 +360,7 @@ const WorkoutPage = () => {
               WORKOUT_EQUIPMENT &&
               WORKOUT_EQUIPMENT[selectedType] && (
                 <div className="form-group">
-                  <label className="form-label">
-                    Используемое оборудование
-                  </label>
+                  <label className="form-label">{t("workout.equipment")}</label>
                   <div className="equipment-options">
                     {WORKOUT_EQUIPMENT[selectedType].map((equipment) => (
                       <div
@@ -374,13 +384,13 @@ const WorkoutPage = () => {
                 onClick={goToPrevStep}
               >
                 <FiChevronLeft />
-                Назад
+                {t("workout.back")}
               </button>
               <button
                 className="btn btn-primary btn-next"
                 onClick={goToNextStep}
               >
-                Далее
+                {t("workout.next")}
                 <FiCheck />
               </button>
             </div>
@@ -391,8 +401,8 @@ const WorkoutPage = () => {
         return (
           <div className="workout-step workout-step-3 fade-in">
             <h2 className="step-title">
-              <span className="step-number">3</span> Добавьте заметки и
-              сохраните
+              <span className="step-number">3</span>{" "}
+              {t("workout.addNotesAndSave")}
             </h2>
 
             <div className="workout-summary">
@@ -407,13 +417,15 @@ const WorkoutPage = () => {
                   {getWorkoutIcon(selectedType)}
                 </div>
                 <div className="summary-title">
-                  <h3>{workoutName || WORKOUT_LABELS[selectedType]}</h3>
+                  <h3>
+                    {workoutName || getLocalizedWorkoutLabel(selectedType)}
+                  </h3>
                   <div className="summary-stats">
                     <span>
-                      <FiClock /> {duration} мин
+                      <FiClock /> {duration} {t("workout.minutes")}
                     </span>
                     <span>
-                      <FiZap /> {calories} ккал
+                      <FiZap /> {calories} {t("workout.kcal")}
                     </span>
                   </div>
                 </div>
@@ -421,7 +433,7 @@ const WorkoutPage = () => {
 
               {selectedEquipment.length > 0 && (
                 <div className="summary-equipment">
-                  <h4>Оборудование:</h4>
+                  <h4>{t("workout.equipment")}:</h4>
                   <div className="summary-equipment-list">
                     {selectedEquipment.map((equipment) => (
                       <span key={equipment} className="equipment-tag">
@@ -437,13 +449,13 @@ const WorkoutPage = () => {
             <div className="form-group notes-group">
               <label className="form-label">
                 <FiFileText />
-                Примечания к тренировке
+                {t("workout.notes")}
               </label>
               <textarea
                 className="form-control form-textarea"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Добавьте заметки о вашей тренировке, особенности или достижения..."
+                placeholder={t("workout.notesPlaceholder")}
                 rows={5}
               />
             </div>
@@ -454,7 +466,7 @@ const WorkoutPage = () => {
                 onClick={goToPrevStep}
               >
                 <FiChevronLeft />
-                Назад
+                {t("workout.back")}
               </button>
               <button
                 className={`btn btn-primary btn-save ${
@@ -468,7 +480,7 @@ const WorkoutPage = () => {
                 ) : (
                   <>
                     <FiFolderPlus />
-                    Сохранить тренировку
+                    {t("workout.saveWorkout")}
                   </>
                 )}
               </button>
@@ -484,7 +496,7 @@ const WorkoutPage = () => {
   return (
     <div className="workout-page container fade-in">
       <div className="page-header">
-        <h1>Новая тренировка</h1>
+        <h1>{t("workout.newWorkout")}</h1>
         <div className="progress-indicator">
           {[1, 2, 3].map((step) => (
             <div
@@ -508,6 +520,8 @@ const WorkoutPage = () => {
       )}
 
       <div className="workout-form-container">{renderStepContent()}</div>
+
+      <div className="copyright-notice">Developed by Iusif Mamedov</div>
     </div>
   );
 };

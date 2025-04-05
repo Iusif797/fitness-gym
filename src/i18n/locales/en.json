@@ -49,7 +49,8 @@
     "dangerZone": "Danger Zone",
     "deleteAccount": "Delete account",
     "deleteAccountConfirm": "Are you sure you want to delete your account? This action cannot be undone. All your data will be permanently deleted.",
-    "passwordChangeSuccess": "Password successfully updated"
+    "passwordChangeSuccess": "Password successfully updated",
+    "notLoggedIn": "You are not logged in"
   },
   "home": {
     "myWorkouts": "My Workouts",
@@ -59,11 +60,13 @@
     "streakDays": "Streak days",
     "noWorkouts": "You don't have any workouts yet. Start by creating your first one!",
     "home": "Home",
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "lastLogin": "Last login"
   },
   "workout": {
     "workout": "Workout",
     "workouts": "Workouts",
+    "newWorkout": "New Workout",
     "workoutTypes": {
       "strength": "Strength",
       "cardio": "Cardio",
@@ -89,7 +92,19 @@
     "updateWorkout": "Update workout",
     "workoutCreated": "Workout created",
     "workoutUpdated": "Workout updated",
-    "workoutDeleted": "Workout deleted"
+    "workoutDeleted": "Workout deleted",
+    "selectType": "Select workout type",
+    "configureWorkout": "Configure your workout",
+    "addNotesAndSave": "Add notes and save",
+    "next": "Next",
+    "back": "Back",
+    "saveWorkout": "Save workout",
+    "workoutTimer": "Workout timer",
+    "useTimer": "Use timer",
+    "disableTimer": "Disable timer",
+    "selectTypeError": "Please select a workout type",
+    "durationRequired": "Please specify workout duration",
+    "notesPlaceholder": "Add notes about your workout, achievements or details..."
   },
   "settings": {
     "settings": "Settings",

@@ -49,7 +49,8 @@
     "dangerZone": "Опасная зона",
     "deleteAccount": "Удалить аккаунт",
     "deleteAccountConfirm": "Вы уверены, что хотите удалить свой аккаунт? Это действие нельзя отменить. Все ваши данные будут удалены.",
-    "passwordChangeSuccess": "Пароль успешно обновлен"
+    "passwordChangeSuccess": "Пароль успешно обновлен",
+    "notLoggedIn": "Вы не авторизованы"
   },
   "home": {
     "myWorkouts": "Мои тренировки",
@@ -59,11 +60,13 @@
     "streakDays": "Дней подряд",
     "noWorkouts": "У вас пока нет тренировок. Начните с создания первой!",
     "home": "Главная",
-    "calendar": "Календарь"
+    "calendar": "Календарь",
+    "lastLogin": "Последний вход"
   },
   "workout": {
     "workout": "Тренировка",
     "workouts": "Тренировки",
+    "newWorkout": "Новая тренировка",
     "workoutTypes": {
       "strength": "Силовая",
       "cardio": "Кардио",
@@ -89,7 +92,19 @@
     "updateWorkout": "Обновить тренировку",
     "workoutCreated": "Тренировка создана",
     "workoutUpdated": "Тренировка обновлена",
-    "workoutDeleted": "Тренировка удалена"
+    "workoutDeleted": "Тренировка удалена",
+    "selectType": "Выберите тип тренировки",
+    "configureWorkout": "Настройте тренировку",
+    "addNotesAndSave": "Добавьте заметки и сохраните",
+    "next": "Далее",
+    "back": "Назад",
+    "saveWorkout": "Сохранить тренировку",
+    "workoutTimer": "Таймер тренировки",
+    "useTimer": "Использовать таймер",
+    "disableTimer": "Выключить таймер",
+    "selectTypeError": "Пожалуйста, выберите тип тренировки",
+    "durationRequired": "Укажите длительность тренировки",
+    "notesPlaceholder": "Добавьте заметки о вашей тренировке, особенности или достижения..."
   },
   "settings": {
     "settings": "Настройки",
