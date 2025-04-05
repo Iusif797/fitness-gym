@@ -104,7 +104,9 @@
     "disableTimer": "Disable timer",
     "selectTypeError": "Please select a workout type",
     "durationRequired": "Please specify workout duration",
-    "notesPlaceholder": "Add notes about your workout, achievements or details..."
+    "notesPlaceholder": "Add notes about your workout, achievements or details...",
+    "addError": "Error adding workout. Please try again.",
+    "successAdd": "Workout successfully added!"
   },
   "settings": {
     "settings": "Settings",

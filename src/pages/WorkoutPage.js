@@ -193,7 +193,18 @@ const WorkoutPage = () => {
 
     // Добавляем тренировку
     setTimeout(() => {
-      addWorkout(workout);
+      const success = addWorkout(workout);
+
+      // Показываем обратную связь пользователю
+      if (success) {
+        console.log("Workout added successfully:", workout);
+      } else {
+        console.error("Failed to add workout");
+        setError(t("workout.addError"));
+        setIsSubmitting(false);
+        return;
+      }
+
       setIsSubmitting(false);
       navigate("/");
     }, 800); // Искусственная задержка для анимации

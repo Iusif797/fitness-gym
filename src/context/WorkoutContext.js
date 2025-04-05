@@ -155,6 +155,13 @@ export const WorkoutProvider = ({ children }) => {
     setError(null);
 
     try {
+      // Добавляем уникальный ID и дату для тренировки, если их нет
+      const workout = {
+        ...workoutData,
+        id: workoutData.id || `local-${Date.now()}`,
+        date: workoutData.date || new Date().toISOString(),
+      };
+
       if (isAuthenticated) {
         // Для авторизованных пользователей, отправляем на сервер
         const token = localStorage.getItem("token");
@@ -166,19 +173,24 @@ export const WorkoutProvider = ({ children }) => {
           },
         };
 
-        const res = await axios.post(
-          `${API_URL}/workouts`,
-          workoutData,
-          config
-        );
+        const res = await axios.post(`${API_URL}/workouts`, workout, config);
         const newWorkout = res.data.data;
         setWorkouts((prev) => [newWorkout, ...prev]);
+        console.log("Workout added to API:", newWorkout);
       } else {
         // Для неавторизованных пользователей, сохраняем локально
-        console.log("Adding workout locally (anonymous user)");
-        setWorkouts((prev) => [workoutData, ...prev]);
-        // Сразу сохраняем в localStorage для неавторизованных
-        const updatedWorkouts = [workoutData, ...workouts];
+        console.log("Adding workout locally (anonymous user):", workout);
+        // Обновляем состояние с новой тренировкой
+        setWorkouts((prev) => [workout, ...prev]);
+
+        // Получаем текущие тренировки из localStorage
+        const storedWorkouts = localStorage.getItem("anonymousWorkouts");
+        const parsedWorkouts = storedWorkouts ? JSON.parse(storedWorkouts) : [];
+
+        // Добавляем новую тренировку в начало массива
+        const updatedWorkouts = [workout, ...parsedWorkouts];
+
+        // Сохраняем обновленный массив в localStorage
         localStorage.setItem(
           "anonymousWorkouts",
           JSON.stringify(updatedWorkouts)
@@ -187,7 +199,7 @@ export const WorkoutProvider = ({ children }) => {
       return true;
     } catch (err) {
       const message = err.response?.data?.message || "Failed to add workout";
-      console.error("Add Workout Error:", message);
+      console.error("Add Workout Error:", message, err);
       setError(message);
       return false;
     } finally {

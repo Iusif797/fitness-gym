@@ -136,9 +136,9 @@ const HomePage = () => {
   };
 
   // Вычисляем цвета для градиентов в зависимости от темы
-  const gradientStart = theme.palette.mode === "dark" ? "#2D3748" : "#E6F7FF";
-  const gradientEnd = theme.palette.mode === "dark" ? "#1A202C" : "#BBE1FA";
-  const highlightColor = theme.palette.primary.main;
+  const gradientStart = theme.palette.mode === "dark" ? "#4A1D96" : "#8B5CF6"; // Фиолетовый цвет
+  const gradientEnd = theme.palette.mode === "dark" ? "#831843" : "#EC4899"; // Розовый цвет
+  const highlightColor = "#EC4899"; // Розовый для акцентов
 
   // Рассчитываем прогресс для прогресс-баров
   const monthProgress =
@@ -163,6 +163,7 @@ const HomePage = () => {
         transition: "all 0.3s ease",
         display: "flex",
         flexDirection: "column",
+        boxShadow: "0 0 40px rgba(0,0,0,0.2) inset",
       }}
       role="presentation"
     >
@@ -177,7 +178,7 @@ const HomePage = () => {
           borderRadius: "50%",
           background: `radial-gradient(circle, ${alpha(
             highlightColor,
-            0.2
+            0.4
           )} 0%, rgba(0,0,0,0) 70%)`,
           zIndex: 0,
           animation: "pulse 15s infinite ease-in-out",
@@ -197,8 +198,8 @@ const HomePage = () => {
           height: 250,
           borderRadius: "50%",
           background: `radial-gradient(circle, ${alpha(
-            highlightColor,
-            0.1
+            "#8B5CF6",
+            0.3
           )} 0%, rgba(0,0,0,0) 70%)`,
           zIndex: 0,
           animation: "float 20s infinite ease-in-out",
@@ -207,6 +208,22 @@ const HomePage = () => {
             "50%": { transform: "translateY(-20px)" },
             "100%": { transform: "translateY(0)" },
           },
+        }}
+      />
+
+      {/* Верхние декоративные линии */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "8px",
+          background: `linear-gradient(90deg, transparent, ${alpha(
+            "#fff",
+            0.3
+          )}, transparent)`,
+          zIndex: 1,
         }}
       />
 
@@ -228,16 +245,16 @@ const HomePage = () => {
               sx={{
                 width: 90,
                 height: 90,
-                bgcolor: alpha(theme.palette.primary.main, 0.9),
+                bgcolor: alpha("#EC4899", 0.9),
                 fontSize: "2rem",
                 fontWeight: "bold",
                 mb: 2,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-                border: `3px solid ${theme.palette.background.paper}`,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+                border: `3px solid ${alpha("#fff", 0.8)}`,
                 transition: "all 0.3s ease",
                 "&:hover": {
-                  transform: "scale(1.05)",
-                  boxShadow: "0 12px 28px rgba(0,0,0,0.2)",
+                  transform: "scale(1.05) rotate(5deg)",
+                  boxShadow: "0 12px 28px rgba(0,0,0,0.3)",
                 },
               }}
               onClick={handleProfile}
@@ -245,15 +262,16 @@ const HomePage = () => {
               {user?.name.charAt(0).toUpperCase()}
             </Avatar>
             <Typography
-              variant="h6"
+              variant="h5"
               sx={{
                 fontWeight: "bold",
                 textAlign: "center",
-                color: theme.palette.mode === "dark" ? "#fff" : "#333",
-                textShadow: "0 2px 10px rgba(0,0,0,0.1)",
+                color: "#fff",
+                textShadow: "0 2px 10px rgba(0,0,0,0.3)",
+                letterSpacing: "0.5px",
               }}
             >
-              {t("common.welcome")}, {user?.name}!
+              {user?.name}
             </Typography>
             <Box
               sx={{
@@ -265,7 +283,12 @@ const HomePage = () => {
             >
               <Typography
                 variant="body2"
-                sx={{ opacity: 0.7, textAlign: "center" }}
+                sx={{
+                  opacity: 0.8,
+                  textAlign: "center",
+                  color: "#fff",
+                  fontWeight: "medium",
+                }}
               >
                 {t("home.lastLogin")}:{" "}
                 {format(new Date(), "PPP", { locale: dateLocale })}
@@ -278,14 +301,24 @@ const HomePage = () => {
               p: 3,
               textAlign: "center",
               background: `linear-gradient(135deg, ${alpha(
-                highlightColor,
+                "#fff",
                 0.1
-              )} 0%, ${alpha(theme.palette.background.paper, 0.2)} 100%)`,
-              borderRadius: 2,
-              backdropFilter: "blur(8px)",
+              )} 0%, ${alpha("#fff", 0.05)} 100%)`,
+              borderRadius: "16px",
+              backdropFilter: "blur(10px)",
+              border: `1px solid ${alpha("#fff", 0.1)}`,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
             }}
           >
-            <Typography variant="h6" sx={{ mb: 2 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                mb: 2,
+                color: "#fff",
+                fontWeight: "bold",
+                textShadow: "0 2px 4px rgba(0,0,0,0.3)",
+              }}
+            >
               {t("auth.notLoggedIn")}
             </Typography>
             <Button
@@ -296,13 +329,19 @@ const HomePage = () => {
                 borderRadius: "12px",
                 py: 1.2,
                 textTransform: "none",
+                fontSize: "1rem",
                 fontWeight: "bold",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                boxShadow: "0 8px 20px rgba(0,0,0,0.2)",
                 transition: "all 0.3s ease",
-                background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                background: `linear-gradient(90deg, #fff, ${alpha(
+                  "#fff",
+                  0.8
+                )})`,
+                color: "#7C3AED",
                 "&:hover": {
-                  transform: "translateY(-2px)",
-                  boxShadow: "0 6px 16px rgba(0,0,0,0.2)",
+                  transform: "translateY(-3px)",
+                  boxShadow: "0 12px 24px rgba(0,0,0,0.3)",
+                  background: "#fff",
                 },
               }}
             >
@@ -329,15 +368,16 @@ const HomePage = () => {
             navigate("/");
           }}
           sx={{
-            borderRadius: 3,
+            borderRadius: "16px",
             mb: 1.5,
-            bgcolor: alpha(theme.palette.primary.main, 0.1),
-            boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+            bgcolor: alpha("#fff", 0.15),
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            backdropFilter: "blur(4px)",
             transition: "all 0.3s ease",
             "&:hover": {
               transform: "translateX(5px)",
-              bgcolor: alpha(theme.palette.primary.main, 0.15),
-              boxShadow: "0 6px 16px rgba(0,0,0,0.1)",
+              bgcolor: alpha("#fff", 0.2),
+              boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
             },
             p: 1.5,
           }}
@@ -345,9 +385,9 @@ const HomePage = () => {
           <ListItemIcon>
             <HomeIcon
               sx={{
-                color: highlightColor,
+                color: "#fff",
                 fontSize: "1.8rem",
-                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
+                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))",
               }}
             />
           </ListItemIcon>
@@ -356,6 +396,9 @@ const HomePage = () => {
             primaryTypographyProps={{
               fontWeight: "bold",
               fontSize: "1.1rem",
+              color: "#fff",
+              letterSpacing: "0.5px",
+              textShadow: "0 1px 2px rgba(0,0,0,0.2)",
             }}
           />
         </ListItem>
@@ -364,13 +407,13 @@ const HomePage = () => {
           button
           onClick={handleSettings}
           sx={{
-            borderRadius: 3,
+            borderRadius: "16px",
             mb: 1.5,
             transition: "all 0.3s ease",
             "&:hover": {
               transform: "translateX(5px)",
-              bgcolor: alpha(theme.palette.primary.main, 0.1),
-              boxShadow: "0 4px 12px rgba(0,0,0,0.07)",
+              bgcolor: alpha("#fff", 0.15),
+              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
             },
             p: 1.5,
           }}
@@ -378,11 +421,10 @@ const HomePage = () => {
           <ListItemIcon>
             <SettingsIcon
               sx={{
-                color:
-                  theme.palette.mode === "dark"
-                    ? "rgba(255,255,255,0.7)"
-                    : "rgba(0,0,0,0.6)",
+                color: "#fff",
+                opacity: 0.9,
                 fontSize: "1.8rem",
+                filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))",
               }}
             />
           </ListItemIcon>
@@ -391,6 +433,9 @@ const HomePage = () => {
             primaryTypographyProps={{
               fontWeight: "medium",
               fontSize: "1.1rem",
+              color: "#fff",
+              opacity: 0.9,
+              letterSpacing: "0.5px",
             }}
           />
         </ListItem>
@@ -401,13 +446,13 @@ const HomePage = () => {
               button
               onClick={handleCalendar}
               sx={{
-                borderRadius: 3,
+                borderRadius: "16px",
                 mb: 1.5,
                 transition: "all 0.3s ease",
                 "&:hover": {
                   transform: "translateX(5px)",
-                  bgcolor: alpha(theme.palette.primary.main, 0.1),
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.07)",
+                  bgcolor: alpha("#fff", 0.15),
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
                 },
                 p: 1.5,
               }}
@@ -415,11 +460,10 @@ const HomePage = () => {
               <ListItemIcon>
                 <CalendarIcon
                   sx={{
-                    color:
-                      theme.palette.mode === "dark"
-                        ? "rgba(255,255,255,0.7)"
-                        : "rgba(0,0,0,0.6)",
+                    color: "#fff",
+                    opacity: 0.9,
                     fontSize: "1.8rem",
+                    filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))",
                   }}
                 />
               </ListItemIcon>
@@ -428,6 +472,9 @@ const HomePage = () => {
                 primaryTypographyProps={{
                   fontWeight: "medium",
                   fontSize: "1.1rem",
+                  color: "#fff",
+                  opacity: 0.9,
+                  letterSpacing: "0.5px",
                 }}
               />
             </ListItem>
@@ -436,13 +483,13 @@ const HomePage = () => {
               button
               onClick={handleProfile}
               sx={{
-                borderRadius: 3,
+                borderRadius: "16px",
                 mb: 1.5,
                 transition: "all 0.3s ease",
                 "&:hover": {
                   transform: "translateX(5px)",
-                  bgcolor: alpha(theme.palette.primary.main, 0.1),
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.07)",
+                  bgcolor: alpha("#fff", 0.15),
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
                 },
                 p: 1.5,
               }}
@@ -450,11 +497,10 @@ const HomePage = () => {
               <ListItemIcon>
                 <PersonIcon
                   sx={{
-                    color:
-                      theme.palette.mode === "dark"
-                        ? "rgba(255,255,255,0.7)"
-                        : "rgba(0,0,0,0.6)",
+                    color: "#fff",
+                    opacity: 0.9,
                     fontSize: "1.8rem",
+                    filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))",
                   }}
                 />
               </ListItemIcon>
@@ -463,6 +509,9 @@ const HomePage = () => {
                 primaryTypographyProps={{
                   fontWeight: "medium",
                   fontSize: "1.1rem",
+                  color: "#fff",
+                  opacity: 0.9,
+                  letterSpacing: "0.5px",
                 }}
               />
             </ListItem>
@@ -547,7 +596,67 @@ const HomePage = () => {
           </Typography>
         </Box>
       </Box>
+
+      {/* Добавим подпись разработчика внизу меню */}
+      <Box
+        sx={{
+          textAlign: "center",
+          p: 2,
+          mt: "auto",
+          color: alpha("#fff", 0.7),
+          fontSize: "0.85rem",
+          borderTop: `1px solid ${alpha("#fff", 0.1)}`,
+          background: alpha("#000", 0.1),
+        }}
+      >
+        <Typography
+          variant="body2"
+          sx={{
+            fontWeight: "medium",
+            opacity: 0.9,
+            mb: 0.5,
+          }}
+        >
+          Fitness Tracker v1.0
+        </Typography>
+        <Typography
+          variant="caption"
+          sx={{
+            opacity: 0.8,
+          }}
+        >
+          Developed by Iusif Mamedov
+        </Typography>
+      </Box>
     </Box>
+  );
+
+  // Кнопка бургер меню (более современный дизайн)
+  const burgerButton = (
+    <IconButton
+      onClick={handleDrawerToggle}
+      aria-label="menu"
+      sx={{
+        position: "fixed",
+        top: "15px",
+        left: "15px",
+        zIndex: 1100,
+        backgroundColor: alpha(gradientStart, 0.2),
+        backdropFilter: "blur(10px)",
+        color: theme.palette.mode === "dark" ? "#fff" : "#222",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+        width: "45px",
+        height: "45px",
+        border: `1px solid ${alpha("#fff", 0.1)}`,
+        transition: "all 0.3s ease",
+        "&:hover": {
+          transform: "rotate(90deg)",
+          backgroundColor: alpha(gradientEnd, 0.3),
+        },
+      }}
+    >
+      <MenuIcon />
+    </IconButton>
   );
 
   // Основное содержимое
@@ -956,151 +1065,17 @@ const HomePage = () => {
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      {/* Верхняя панель */}
-      <Box
-        component="header"
-        sx={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 70,
-          display: "flex",
-          alignItems: "center",
-          px: 3,
-          background:
-            theme.palette.mode === "dark"
-              ? `linear-gradient(90deg, ${alpha(
-                  theme.palette.background.paper,
-                  0.8
-                )} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`
-              : `linear-gradient(90deg, ${alpha(
-                  theme.palette.background.paper,
-                  0.9
-                )} 0%, ${theme.palette.background.paper} 100%)`,
-          backdropFilter: "blur(10px)",
-          zIndex: 1000,
-          boxShadow: "0 2px 20px rgba(0,0,0,0.05)",
-        }}
-      >
-        <IconButton
-          color="inherit"
-          aria-label="open drawer"
-          edge="start"
-          onClick={handleDrawerToggle}
-          sx={{
-            mr: 2,
-            bgcolor: alpha(theme.palette.primary.main, 0.1),
-            color: theme.palette.primary.main,
-            "&:hover": {
-              bgcolor: alpha(theme.palette.primary.main, 0.2),
-            },
-          }}
-        >
-          <MenuIcon />
-        </IconButton>
-        <Typography
-          variant="h6"
-          component="div"
-          sx={{
-            flexGrow: 1,
-            fontWeight: "bold",
-            fontSize: "1.5rem",
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-          }}
-        >
-          <FitnessCenterIcon sx={{ color: theme.palette.primary.main }} />
-          {t("common.appName")}
-        </Typography>
-
-        {!isMobile && (
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <Tooltip title={t("settings.settings")}>
-              <IconButton
-                color="inherit"
-                onClick={handleSettings}
-                sx={{
-                  bgcolor: alpha(theme.palette.primary.main, 0.05),
-                  "&:hover": {
-                    bgcolor: alpha(theme.palette.primary.main, 0.1),
-                  },
-                }}
-              >
-                <SettingsIcon />
-              </IconButton>
-            </Tooltip>
-
-            <Tooltip
-              title={
-                theme.palette.mode === "dark"
-                  ? t("settings.lightTheme")
-                  : t("settings.darkTheme")
-              }
-            >
-              <IconButton
-                color="inherit"
-                onClick={handleThemeToggle}
-                sx={{
-                  bgcolor: alpha(theme.palette.primary.main, 0.05),
-                  "&:hover": {
-                    bgcolor: alpha(theme.palette.primary.main, 0.1),
-                  },
-                }}
-              >
-                {theme.palette.mode === "dark" ? (
-                  <LightModeIcon />
-                ) : (
-                  <DarkModeIcon />
-                )}
-              </IconButton>
-            </Tooltip>
-
-            {isAuthenticated ? (
-              <Avatar
-                onClick={handleProfile}
-                sx={{
-                  cursor: "pointer",
-                  bgcolor: theme.palette.primary.main,
-                  "&:hover": {
-                    boxShadow: "0 0 0 2px " + theme.palette.primary.main,
-                  },
-                }}
-              >
-                {user?.name.charAt(0).toUpperCase()}
-              </Avatar>
-            ) : (
-              <Button
-                variant="contained"
-                onClick={handleLogin}
-                sx={{
-                  borderRadius: "24px",
-                  px: 2,
-                }}
-              >
-                {t("auth.login")}
-              </Button>
-            )}
-          </Box>
-        )}
-      </Box>
-
-      {/* Боковая панель */}
+      {burgerButton}
       <Drawer
-        variant={isMobile ? "temporary" : "temporary"}
+        anchor="left"
         open={drawerOpen}
         onClose={handleDrawerToggle}
-        ModalProps={{
-          keepMounted: true,
-        }}
-        PaperProps={{
-          sx: {
-            boxShadow: "0 0 30px rgba(0,0,0,0.2)",
-            width: { xs: "85%", sm: 320 },
-            borderTopRightRadius: "2rem",
-            borderBottomRightRadius: "2rem",
-            border: "none",
+        variant="temporary"
+        sx={{
+          "& .MuiDrawer-paper": {
+            boxSizing: "border-box",
+            width: 300,
+            borderRight: "none",
           },
         }}
       >
