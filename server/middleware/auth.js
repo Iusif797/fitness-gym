@@ -3,46 +3,37 @@ const User = require("../models/User");
 require("dotenv").config();
 
 // Защита маршрутов
-exports.protect = async (req, res, next) => {
+const protect = async (req, res, next) => {
   let token;
 
-  // Проверяем наличие токена в заголовке Authorization
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer")
   ) {
-    // Получаем токен из заголовка
-    token = req.headers.authorization.split(" ")[1];
-  }
+    try {
+      // Получаем токен из заголовка
+      token = req.headers.authorization.split(" ")[1];
 
-  // Убедимся, что токен существует
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: "Нет доступа к данному ресурсу",
-    });
-  }
+      // Верифицируем токен
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-  try {
-    // Проверяем токен
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      // Получаем пользователя без пароля
+      req.user = await User.findById(decoded.id).select("-password");
 
-    // Добавляем пользователя к запросу
-    req.user = await User.findById(decoded.id);
-
-    if (!req.user) {
-      return res.status(401).json({
+      next();
+    } catch (error) {
+      console.error(error);
+      res.status(401).json({
         success: false,
-        message: "Пользователь не найден",
+        message: "Не авторизован, токен недействителен",
       });
     }
+  }
 
-    next();
-  } catch (err) {
-    console.error("Auth middleware error:", err);
-    return res.status(401).json({
+  if (!token) {
+    res.status(401).json({
       success: false,
-      message: "Нет доступа к данному ресурсу",
+      message: "Не авторизован, нет токена",
     });
   }
 };
