@@ -1,68 +1,79 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { ThemeProvider, createTheme, CssBaseline } from "@mui/material";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import { WorkoutProvider } from "./context/WorkoutContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import HomePage from "./pages/HomePage";
 import WorkoutPage from "./pages/WorkoutPage";
-import StatisticsPage from "./pages/StatisticsPage";
-import { WorkoutProvider } from "./context/WorkoutContext";
+import LoginPage from "./pages/LoginPage";
+import SettingsPage from "./pages/SettingsPage";
+import AccountPage from "./pages/AccountPage";
 
-// Создаем темную тему для Material UI
-const darkTheme = createTheme({
-  palette: {
-    mode: "dark",
-    primary: {
-      main: "#8C9EFF", // светлый фиолетово-синий цвет
-    },
-    secondary: {
-      main: "#6EFFB1", // яркий аквамариновый
-    },
-    background: {
-      default: "#121212",
-      paper: "#1E1E1E",
-    },
-    text: {
-      primary: "#ffffff",
-      secondary: "#B0B0B0",
-    },
-  },
-  typography: {
-    fontFamily: 'Poppins, Roboto, "Helvetica Neue", Arial, sans-serif',
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-          textTransform: "none",
-          fontWeight: 500,
-        },
+// Защищенный маршрут компонент
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Если идет проверка аутентификации, можно показать загрузку или ничего
+  if (isLoading) {
+    return null;
+  }
+
+  return isAuthenticated ? children : <Navigate to="/login" />;
+};
+
+function AppContent() {
+  const { user } = useAuth();
+
+  // Создаем тему в зависимости от настроек пользователя
+  const theme = createTheme({
+    palette: {
+      mode: user?.settings?.theme || "dark",
+      primary: {
+        main: "#2196f3",
+      },
+      secondary: {
+        main: "#f50057",
       },
     },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 12,
-          boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
-        },
-      },
-    },
-  },
-});
+  });
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <WorkoutProvider>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/workout/:id?" element={<WorkoutPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <AccountPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </WorkoutProvider>
+    </ThemeProvider>
+  );
+}
 
 function App() {
   return (
-    <ThemeProvider theme={darkTheme}>
-      <CssBaseline />
-      <WorkoutProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/workout" element={<WorkoutPage />} />
-            <Route path="/statistics" element={<StatisticsPage />} />
-          </Routes>
-        </Router>
-      </WorkoutProvider>
-    </ThemeProvider>
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </Router>
   );
 }
 

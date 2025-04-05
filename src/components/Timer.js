@@ -42,6 +42,11 @@ const Timer = ({ onFinish, initialSeconds = 0 }) => {
     setIsPaused(false);
   };
 
+  // Приостанавливает секундомер
+  const handlePause = () => {
+    setIsPaused(true);
+  };
+
   // Сбрасывает секундомер до нуля
   const handleReset = () => {
     setIsActive(false);
@@ -106,14 +111,6 @@ const Timer = ({ onFinish, initialSeconds = 0 }) => {
             <FiCheck />
           </button>
         </div>
-
-        <button
-          onClick={handleFinish}
-          className="timer-finish-btn"
-          disabled={seconds === 0}
-        >
-          Завершить тренировку
-        </button>
       </div>
     </div>
   );

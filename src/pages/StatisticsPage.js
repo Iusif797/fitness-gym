@@ -7,13 +7,12 @@ import {
   LinearScale,
   PointElement,
   LineElement,
-  BarElement,
   ArcElement,
   Tooltip,
   Legend,
   Filler,
 } from "chart.js";
-import { Line, Bar, Doughnut } from "react-chartjs-2";
+import { Line, Doughnut } from "react-chartjs-2";
 import {
   FiChevronLeft,
   FiClock,
@@ -25,7 +24,6 @@ import {
   FiFilter,
   FiUser,
   FiSearch,
-  FiChevronDown,
   FiPlus,
 } from "react-icons/fi";
 import {
@@ -40,7 +38,6 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
-  BarElement,
   ArcElement,
   Tooltip,
   Legend,
@@ -52,7 +49,7 @@ ChartJS.defaults.color = "#94a1b2";
 ChartJS.defaults.borderColor = "rgba(255, 255, 255, 0.1)";
 
 const StatisticsPage = () => {
-  const { workouts, totalStats } = useContext(WorkoutContext);
+  const { workouts } = useContext(WorkoutContext);
   const [filterType, setFilterType] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
   const [dateRange, setDateRange] = useState("all"); // 'week', 'month', 'year', 'all'

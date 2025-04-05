@@ -1321,12 +1321,13 @@ button {
 }
 
 .timer-btn.finish {
-  background: var(--success-color);
+  background-color: var(--success-color);
   border-color: var(--success-color);
+  color: var(--dark-color);
 }
 
 .timer-btn.finish:hover {
-  background: var(--success-color);
+  background-color: var(--success-color);
   box-shadow: 0 0 15px var(--success-color);
 }
 
@@ -1361,4 +1362,18 @@ button {
   margin-top: 0.5rem;
   font-size: 0.85rem;
   color: var(--gray-color);
+}
+
+/* Исправляем стили для workout-equipment */
+.workout-equipment {
+  display: flex;
+  align-items: center;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--gray-color);
+}
+
+.workout-equipment .icon {
+  margin-right: 0.5rem;
+  font-size: 1rem;
 }
