@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useWorkout } from "../context/WorkoutContext";
 import { useTranslation } from "react-i18next";
+import moment from "moment";
 import {
   FiChevronLeft,
   FiClock,
@@ -179,14 +180,14 @@ const WorkoutPage = () => {
 
     setIsSubmitting(true);
 
-    // Создаем объект тренировки
+    // Создаем объект тренировки с использованием moment для даты
     const workout = {
       id: Date.now().toString(),
       type: selectedType,
       name: workoutName || t(`workout.workoutTypes.${selectedType}`),
       duration,
       calories,
-      date: new Date().toISOString(),
+      date: moment().toISOString(),
       notes,
       equipment: selectedEquipment,
     };

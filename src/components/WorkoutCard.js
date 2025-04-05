@@ -1,6 +1,6 @@
 import React from "react";
-import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import moment from "moment";
+import "moment/locale/ru";
 import {
   Card,
   CardContent,
@@ -66,10 +66,11 @@ const workoutTypeLabels = {
 const WorkoutCard = ({ workout, onDelete, onClick }) => {
   const theme = useTheme();
 
-  // Форматирование даты
-  const formattedDate = format(new Date(workout.date), "d MMMM yyyy", {
-    locale: ru,
-  });
+  // Настраиваем локаль moment
+  moment.locale("ru");
+
+  // Форматирование даты с использованием moment
+  const formattedDate = moment(workout.date).format("D MMMM YYYY");
 
   return (
     <Card

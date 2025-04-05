@@ -17,145 +17,165 @@ export const AuthProvider = ({ children }) => {
 
   // Проверка состояния входа при загрузке приложения
   useEffect(() => {
-    const loadUser = async () => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        // Устанавливаем токен в заголовки axios по умолчанию
-        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-        try {
-          const res = await axios.get(`${API_URL}/auth/me`); // Используем API_URL вместо захардкоженного пути
-          setUser(res.data.data); // Предполагаем, что данные пользователя в res.data.data
-
-          // Устанавливаем язык из настроек пользователя если есть
-          if (res.data.data.settings && res.data.data.settings.language) {
-            i18n.changeLanguage(res.data.data.settings.language);
-          }
-        } catch (err) {
-          console.error(
-            "Failed to load user:",
-            err.response ? err.response.data : err.message
-          );
-          localStorage.removeItem("token"); // Удаляем невалидный токен
-          delete axios.defaults.headers.common["Authorization"];
-          setUser(null);
-        }
-      } else {
-        // Если токена нет, пользователь не аутентифицирован
-        setUser(null);
-      }
-      setLoading(false);
-    };
-
-    loadUser();
+    const token = localStorage.getItem("token");
+    if (token) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      const userData = JSON.parse(localStorage.getItem("user"));
+      setUser(userData);
+    }
+    setLoading(false);
   }, []);
 
   // Функция регистрации
-  const register = async (userData) => {
-    setLoading(true);
-    setError(null);
-
+  const register = async (name, email, password) => {
     try {
-      const res = await axios.post(`${API_URL}/auth/register`, userData);
-      localStorage.setItem("token", res.data.token);
-      axios.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${res.data.token}`;
-      // После успешной регистрации сразу загружаем пользователя
-      const userRes = await axios.get(`${API_URL}/auth/me`);
-      setUser(userRes.data.data);
+      const response = await axios.post(`${API_URL}/auth/register`, {
+        name,
+        email,
+        password,
+      });
+
+      const { token, user } = response.data;
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      setUser(user);
 
       // Устанавливаем язык из настроек пользователя если есть
-      if (userRes.data.data.settings && userRes.data.data.settings.language) {
-        i18n.changeLanguage(userRes.data.data.settings.language);
+      if (user.settings && user.settings.language) {
+        i18n.changeLanguage(user.settings.language);
       }
 
-      return true; // Успех
-    } catch (err) {
-      const message = err.response?.data?.message || "Registration failed";
+      return { success: true };
+    } catch (error) {
+      const message = error.response?.data?.message || "Ошибка регистрации";
       console.error("Registration Error:", message);
       setError(message);
       localStorage.removeItem("token");
       delete axios.defaults.headers.common["Authorization"];
       setUser(null);
-      return false; // Ошибка
+      return { success: false, error: message };
     }
   };
 
   // Функция входа
-  const login = async (userData) => {
-    setLoading(true);
-    setError(null);
-
+  const login = async (email, password) => {
     try {
-      const res = await axios.post(`${API_URL}/auth/login`, userData);
-      localStorage.setItem("token", res.data.token);
-      axios.defaults.headers.common[
-        "Authorization"
-      ] = `Bearer ${res.data.token}`;
-      // После успешного входа загружаем пользователя
-      const userRes = await axios.get(`${API_URL}/auth/me`);
-      setUser(userRes.data.data);
+      const response = await axios.post(`${API_URL}/auth/login`, {
+        email,
+        password,
+      });
+
+      const { token, user } = response.data;
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      setUser(user);
 
       // Устанавливаем язык из настроек пользователя если есть
-      if (userRes.data.data.settings && userRes.data.data.settings.language) {
-        i18n.changeLanguage(userRes.data.data.settings.language);
+      if (user.settings && user.settings.language) {
+        i18n.changeLanguage(user.settings.language);
       }
 
-      return true; // Успех
-    } catch (err) {
-      const message = err.response?.data?.message || "Login failed";
+      return { success: true };
+    } catch (error) {
+      const message = error.response?.data?.message || "Ошибка входа";
       console.error("Login Error:", message);
       setError(message);
       localStorage.removeItem("token");
       delete axios.defaults.headers.common["Authorization"];
       setUser(null);
-      return false; // Ошибка
+      return { success: false, error: message };
     }
   };
 
   // Функция выхода
-  const logout = async () => {
+  const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    delete axios.defaults.headers.common["Authorization"];
     setUser(null);
   };
 
-  // Функция обновления настроек пользователя (теперь через API)
-  const updateUserSettings = async (settings) => {
-    setLoading(true);
-    setError(null);
+  // Функция обновления настроек пользователя
+  const updateUserSettings = (settings) => {
+    const updatedUser = { ...user, settings };
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+    setUser(updatedUser);
 
-    try {
-      const token = localStorage.getItem("token");
+    // Применяем настройки темы к document
+    if (settings.theme) {
+      // Устанавливаем data-theme атрибут для корневого элемента
+      document.documentElement.setAttribute("data-theme", settings.theme);
 
-      if (!token) {
-        throw new Error("No authentication token");
-      }
+      // Обновляем класс для body
+      document.body.className =
+        settings.theme === "dark" ? "dark-theme" : "light-theme";
 
-      const config = {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      };
+      // Принудительно обновляем стили на странице
+      const event = new Event("themeChanged");
+      window.dispatchEvent(event);
 
-      const res = await axios.put(`${API_URL}/auth/settings`, settings, config);
+      // Перезагружаем стили без перезагрузки страницы
+      const links = document.querySelectorAll('link[rel="stylesheet"]');
+      links.forEach((link) => {
+        const href = link.getAttribute("href");
+        if (href) {
+          const newHref = href.includes("?")
+            ? `${href}&theme=${Date.now()}`
+            : `${href}?theme=${Date.now()}`;
+          link.setAttribute("href", newHref);
+        }
+      });
 
-      // Обновляем пользователя в состоянии контекста
-      setUser((prevUser) => ({
-        ...prevUser,
-        settings: res.data.data.settings,
-      }));
+      console.log("Theme updated to:", settings.theme);
+    }
 
-      // Обновляем язык если он изменился
-      if (settings.language) {
-        i18n.changeLanguage(settings.language);
-      }
-    } catch (err) {
-      const message =
-        err.response?.data?.message || "Failed to update settings";
-      console.error("Settings Update Error:", message);
-      setError(message);
+    // Обновляем язык если он изменился
+    if (settings.language) {
+      i18n.changeLanguage(settings.language);
     }
   };
+
+  // При инициализации также загружаем настройки для неавторизованных пользователей
+  useEffect(() => {
+    // Если пользователь не авторизован, загружаем настройки из localStorage
+    if (!user && !loading) {
+      const localSettings = JSON.parse(
+        localStorage.getItem("userSettings") || "{}"
+      );
+
+      // Устанавливаем настройки из localStorage
+      if (Object.keys(localSettings).length > 0) {
+        console.log("Loading settings from localStorage:", localSettings);
+
+        // Применяем тему
+        if (localSettings.theme) {
+          document.documentElement.setAttribute(
+            "data-theme",
+            localSettings.theme
+          );
+          document.body.className =
+            localSettings.theme === "dark" ? "dark-theme" : "light-theme";
+        }
+
+        // Применяем язык
+        if (localSettings.language) {
+          i18n.changeLanguage(localSettings.language);
+        }
+
+        // Создаем объект пользователя с настройками
+        setUser({
+          name: "Guest",
+          settings: localSettings,
+        });
+      }
+    }
+  }, [user, loading]);
+
+  if (loading) {
+    return <div>Загрузка...</div>;
+  }
 
   return (
     <AuthContext.Provider
@@ -167,7 +187,7 @@ export const AuthProvider = ({ children }) => {
         register,
         login,
         logout,
-        updateUserSettings, // Заменяем старую функцию
+        updateUserSettings,
         setError, // Для сброса ошибок извне
       }}
     >

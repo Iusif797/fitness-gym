@@ -6,6 +6,7 @@ import React, {
   useCallback,
 } from "react";
 import axios from "axios";
+import moment from "moment";
 import { useAuth } from "./AuthContext"; // Импортируем хук useAuth
 
 // Добавляем определение базового URL
@@ -15,7 +16,7 @@ const API_URL =
     : "http://localhost:5000/api"; // В разработке используем абсолютный URL
 
 // Создаем контекст
-export const WorkoutContext = createContext(null);
+const WorkoutContext = createContext();
 
 /**
  * Провайдер контекста тренировок
@@ -33,55 +34,41 @@ export const WorkoutProvider = ({ children }) => {
     workoutsByMonth: {},
   });
 
-  // Загрузка тренировок при инициализации или смене статуса аутентификации
+  // Загрузка тренировок при монтировании компонента или изменении пользователя
   useEffect(() => {
-    // Не загружаем данные, пока не определен статус аутентификации
-    if (authLoading) {
+    const fetchWorkouts = async () => {
       setLoading(true);
-      return;
-    }
+      setError(null);
 
-    setLoading(true);
-    setError(null);
-
-    const loadWorkouts = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) throw new Error("No auth token");
+        // Получаем данные из localStorage
+        const storedWorkouts = localStorage.getItem("workouts");
 
-        const config = {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        };
+        if (storedWorkouts) {
+          const parsedWorkouts = JSON.parse(storedWorkouts);
+          // Фильтруем тренировки по userId, если пользователь авторизован
+          const filteredWorkouts = user
+            ? parsedWorkouts.filter((workout) => workout.userId === user.uid)
+            : parsedWorkouts.filter(
+                (workout) => !workout.userId || workout.userId === "guest"
+              );
 
-        if (isAuthenticated) {
-          // Загрузка с API для авторизованного пользователя
-          console.log("Loading workouts from API for user:", user?._id);
-          const res = await axios.get(`${API_URL}/workouts`, config);
-          setWorkouts(res.data.data || []);
+          setWorkouts(filteredWorkouts);
         } else {
-          // Загрузка из localStorage для анонимного пользователя
-          console.log("Loading workouts from localStorage (anonymous)");
-          const storedWorkouts = localStorage.getItem("anonymousWorkouts"); // Используем другое ключ
-          setWorkouts(storedWorkouts ? JSON.parse(storedWorkouts) : []);
+          setWorkouts([]);
         }
       } catch (err) {
-        const message =
-          err.response?.data?.message || "Failed to load workouts";
-        console.error("Workout Loading Error:", message);
-        setError(message);
-        setWorkouts([]); // Сбрасываем тренировки при ошибке
+        console.error("Ошибка при загрузке тренировок:", err);
+        setError("Ошибка при загрузке тренировок");
       } finally {
         setLoading(false);
       }
     };
 
-    loadWorkouts();
-    // Перезагружаем при смене статуса аутентификации
-  }, [isAuthenticated, authLoading, user?._id]);
+    fetchWorkouts();
+  }, [user]);
 
-  // Функция обновления статистики (без изменений, работает с текущим состоянием workouts)
+  // Функция обновления статистики
   const updateStats = useCallback(() => {
     // Расчет общего количества тренировок, продолжительности и калорий
     const totalDuration = workouts.reduce(
@@ -99,31 +86,24 @@ export const WorkoutProvider = ({ children }) => {
       workoutsByType[workout.type] = (workoutsByType[workout.type] || 0) + 1;
     });
 
-    // Группировка по месяцам (за последние 6 месяцев)
+    // Группировка по месяцам (за последние 6 месяцев) с использованием moment
     const workoutsByMonth = {};
-    const today = new Date();
+    const today = moment();
 
     for (let i = 0; i < 6; i++) {
-      const date = new Date(today);
-      date.setMonth(today.getMonth() - i);
-      const monthKey = `${date.toLocaleString("ru-RU", {
-        // TODO: Использовать язык из настроек
-        month: "short",
-      })} ${date.getFullYear()}`;
+      const date = moment(today).subtract(i, "months");
+      const monthKey = date.format("MMM YYYY");
       workoutsByMonth[monthKey] = 0;
     }
 
     workouts.forEach((workout) => {
-      const date = new Date(workout.date);
+      const date = moment(workout.date);
       // Проверка на валидность даты
-      if (isNaN(date.getTime())) {
+      if (!date.isValid()) {
         console.warn("Invalid date found in workout:", workout);
         return; // Пропускаем тренировку с невалидной датой
       }
-      const monthKey = `${date.toLocaleString("ru-RU", {
-        // TODO: Использовать язык из настроек
-        month: "short",
-      })} ${date.getFullYear()}`;
+      const monthKey = date.format("MMM YYYY");
 
       if (monthKey in workoutsByMonth) {
         workoutsByMonth[monthKey]++;
@@ -151,133 +131,88 @@ export const WorkoutProvider = ({ children }) => {
 
   // Добавление новой тренировки
   const addWorkout = async (workoutData) => {
-    setLoading(true);
-    setError(null);
-
     try {
-      // Добавляем уникальный ID и дату для тренировки, если их нет
-      const workout = {
+      const newWorkout = {
         ...workoutData,
-        id: workoutData.id || `local-${Date.now()}`,
-        date: workoutData.date || new Date().toISOString(),
+        id: Date.now().toString(),
+        userId: user ? user.uid : "guest",
+        createdAt: new Date().toISOString(),
       };
 
-      if (isAuthenticated) {
-        // Для авторизованных пользователей, отправляем на сервер
-        const token = localStorage.getItem("token");
-        if (!token) throw new Error("No auth token");
+      const updatedWorkouts = [...workouts, newWorkout];
+      setWorkouts(updatedWorkouts);
 
-        const config = {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        };
+      // Сохраняем в localStorage
+      const storedWorkouts = localStorage.getItem("workouts");
+      let allWorkouts = [];
 
-        const res = await axios.post(`${API_URL}/workouts`, workout, config);
-        const newWorkout = res.data.data;
-        setWorkouts((prev) => [newWorkout, ...prev]);
-        console.log("Workout added to API:", newWorkout);
-      } else {
-        // Для неавторизованных пользователей, сохраняем локально
-        console.log("Adding workout locally (anonymous user):", workout);
-        // Обновляем состояние с новой тренировкой
-        setWorkouts((prev) => [workout, ...prev]);
-
-        // Получаем текущие тренировки из localStorage
-        const storedWorkouts = localStorage.getItem("anonymousWorkouts");
-        const parsedWorkouts = storedWorkouts ? JSON.parse(storedWorkouts) : [];
-
-        // Добавляем новую тренировку в начало массива
-        const updatedWorkouts = [workout, ...parsedWorkouts];
-
-        // Сохраняем обновленный массив в localStorage
-        localStorage.setItem(
-          "anonymousWorkouts",
-          JSON.stringify(updatedWorkouts)
-        );
+      if (storedWorkouts) {
+        allWorkouts = JSON.parse(storedWorkouts);
       }
-      return true;
+
+      allWorkouts.push(newWorkout);
+      localStorage.setItem("workouts", JSON.stringify(allWorkouts));
+
+      return { success: true };
     } catch (err) {
-      const message = err.response?.data?.message || "Failed to add workout";
-      console.error("Add Workout Error:", message, err);
-      setError(message);
-      return false;
-    } finally {
-      setLoading(false);
+      console.error("Ошибка при добавлении тренировки:", err);
+      setError("Ошибка при добавлении тренировки");
+      return { success: false, error: err.message };
     }
   };
 
   // Удаление тренировки
   const deleteWorkout = async (id) => {
-    setError(null);
-    const workoutToDelete = workouts.find((w) => (w._id || w.id) === id);
-    if (!workoutToDelete) return;
-
-    if (
-      !window.confirm(
-        `Удалить тренировку ${workoutToDelete.type} от ${new Date(
-          workoutToDelete.date
-        ).toLocaleDateString("ru-RU")}?`
-      )
-    ) {
-      return;
-    }
-
     try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No auth token");
+      const updatedWorkouts = workouts.filter((workout) => workout.id !== id);
+      setWorkouts(updatedWorkouts);
 
-      const config = {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      };
+      // Удаляем из localStorage
+      const storedWorkouts = localStorage.getItem("workouts");
 
-      await axios.delete(`${API_URL}/workouts/${id}`, config);
-      // Оптимистичное удаление из UI
-      setWorkouts((prev) =>
-        prev.filter((workout) => (workout._id || workout.id) !== id)
-      );
-      return true;
+      if (storedWorkouts) {
+        const allWorkouts = JSON.parse(storedWorkouts);
+        const updatedAllWorkouts = allWorkouts.filter(
+          (workout) => workout.id !== id
+        );
+
+        localStorage.setItem("workouts", JSON.stringify(updatedAllWorkouts));
+      }
+
+      return { success: true };
     } catch (err) {
-      const message = err.response?.data?.message || "Failed to delete workout";
-      console.error("Delete Workout Error:", message);
-      setError(message);
-      // Можно реализовать откат UI при ошибке, но пока оставим так
-      return false;
+      console.error("Ошибка при удалении тренировки:", err);
+      setError("Ошибка при удалении тренировки");
+      return { success: false, error: err.message };
     }
   };
 
-  // Обновление тренировки (пока не реализовано в UI, но можно добавить)
+  // Обновление тренировки
   const updateWorkout = async (id, updatedData) => {
-    setLoading(true);
-    setError(null);
-
     try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No auth token");
-
-      const config = {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      };
-
-      const res = await axios.put(
-        `${API_URL}/workouts/${id}`,
-        updatedData,
-        config
+      const updatedWorkouts = workouts.map((workout) =>
+        workout.id === id ? { ...workout, ...updatedData } : workout
       );
-      const updatedWorkout = res.data.data;
-      setWorkouts((prev) =>
-        prev.map((w) => ((w._id || w.id) === id ? updatedWorkout : w))
-      );
-      return true;
+
+      setWorkouts(updatedWorkouts);
+
+      // Обновляем в localStorage
+      const storedWorkouts = localStorage.getItem("workouts");
+
+      if (storedWorkouts) {
+        const allWorkouts = JSON.parse(storedWorkouts);
+        const updatedAllWorkouts = allWorkouts.map((workout) =>
+          workout.id === id ? { ...workout, ...updatedData } : workout
+        );
+
+        localStorage.setItem("workouts", JSON.stringify(updatedAllWorkouts));
+      }
+
+      return { success: true };
     } catch (err) {
-      const message = err.response?.data?.message || "Failed to update workout";
-      console.error("Update Workout Error:", message);
-      setError(message);
-      return false;
+      console.error("Ошибка при обновлении тренировки:", err);
+      setError("Ошибка при обновлении тренировки");
+      return { success: false, error: err.message };
     }
   };
 
@@ -348,6 +283,62 @@ export const WorkoutProvider = ({ children }) => {
     linkElement.click();
   };
 
+  // Создание нескольких тестовых тренировок (для демонстрации)
+  const createSampleWorkouts = () => {
+    // Эта функция добавляет несколько примеров тренировок
+    const sampleWorkouts = [
+      {
+        id: "1",
+        name: "Кардио тренировка",
+        type: "cardio",
+        duration: 45,
+        date: new Date(Date.now() - 86400000).toISOString(), // вчера
+        userId: user ? user.uid : "guest",
+        notes: "Бег на беговой дорожке и эллиптический тренажер",
+        intensity: "medium",
+      },
+      {
+        id: "2",
+        name: "Силовая тренировка",
+        type: "strength",
+        duration: 60,
+        date: new Date(Date.now() - 172800000).toISOString(), // позавчера
+        userId: user ? user.uid : "guest",
+        notes: "Жим лежа, приседания, тяга",
+        intensity: "high",
+      },
+      {
+        id: "3",
+        name: "Йога",
+        type: "flexibility",
+        duration: 30,
+        date: new Date(Date.now() - 432000000).toISOString(), // 5 дней назад
+        userId: user ? user.uid : "guest",
+        notes: "Расслабляющая йога перед сном",
+        intensity: "low",
+      },
+    ];
+
+    try {
+      // Сохраняем в localStorage
+      localStorage.setItem("workouts", JSON.stringify(sampleWorkouts));
+      setWorkouts(sampleWorkouts);
+      return { success: true };
+    } catch (err) {
+      console.error("Ошибка при создании примеров тренировок:", err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  // Инициализация сохранения, если пользователь впервые открыл приложение
+  useEffect(() => {
+    if (!localStorage.getItem("workouts")) {
+      // Чтобы не создавать пример автоматически, закомментируем это
+      // createSampleWorkouts();
+      localStorage.setItem("workouts", JSON.stringify([]));
+    }
+  }, []);
+
   return (
     <WorkoutContext.Provider
       value={{
@@ -365,6 +356,7 @@ export const WorkoutProvider = ({ children }) => {
         exportData,
         // toggleTheme - удалена
         setError, // Передаем для сброса ошибок
+        createSampleWorkouts,
       }}
     >
       {children}

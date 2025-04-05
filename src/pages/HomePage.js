@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme, alpha } from "@mui/material/styles";
-import { useWorkout } from "../context/WorkoutContext";
 import { useAuth } from "../context/AuthContext";
+import { useWorkout } from "../context/WorkoutContext";
 import { useTranslation } from "react-i18next";
 import {
   Box,
@@ -17,41 +17,41 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  Divider,
   Avatar,
   Grid,
   CircularProgress,
-  useMediaQuery,
   Paper,
   Grow,
   Zoom,
   Fab,
-  Tooltip,
   LinearProgress,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Badge,
+  useMediaQuery,
 } from "@mui/material";
-import {
-  Menu as MenuIcon,
-  Add as AddIcon,
-  Home as HomeIcon,
-  Settings as SettingsIcon,
-  CalendarMonth as CalendarIcon,
-  Logout as LogoutIcon,
-  Person as PersonIcon,
-  Login as LoginIcon,
-  DarkMode as DarkModeIcon,
-  LightMode as LightModeIcon,
-  Whatshot as WhatshotIcon,
-  Timer as TimerIcon,
-  FitnessCenter as FitnessCenterIcon,
-  DirectionsRun as DirectionsRunIcon,
-  ArrowForward as ArrowForwardIcon,
-  EmojiEvents as EmojiEventsIcon,
-  Bolt as BoltIcon,
-} from "@mui/icons-material";
+import MenuIcon from "@mui/icons-material/Menu";
+import HomeIcon from "@mui/icons-material/Home";
+import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
+import SettingsIcon from "@mui/icons-material/Settings";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import LogoutIcon from "@mui/icons-material/Logout";
+import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
+import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import WhatshotIcon from "@mui/icons-material/Whatshot";
+import GroupIcon from "@mui/icons-material/Group";
+import PersonIcon from "@mui/icons-material/Person";
+import TimelineIcon from "@mui/icons-material/Timeline";
 import WorkoutCard from "../components/WorkoutCard";
-import { format } from "date-fns";
-import { ru, enUS } from "date-fns/locale";
+import moment from "moment";
+import "moment/locale/ru";
 
 const HomePage = () => {
   const theme = useTheme();
@@ -68,8 +68,16 @@ const HomePage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
 
-  // Определяем локаль для форматирования даты
-  const dateLocale = i18n.language === "ru" ? ru : enUS;
+  // Настраиваем локаль для moment
+  moment.locale(i18n.language === "ru" ? "ru" : "en");
+
+  // Добавляем состояние для календаря
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(moment());
+  const [calendarWorkouts, setCalendarWorkouts] = useState({});
+
+  // Состояние для опций фитнес-зала
+  const [gymDialogOpen, setGymDialogOpen] = useState(false);
 
   // Обработка статистики пользователя
   useEffect(() => {
@@ -78,19 +86,66 @@ const HomePage = () => {
       const totalWorkouts = workouts.length;
 
       // Тренировки за текущий месяц
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
+      const currentMonth = moment().month();
+      const currentYear = moment().year();
       const thisMonth = workouts.filter((workout) => {
-        const workoutDate = new Date(workout.date);
+        const workoutDate = moment(workout.date);
         return (
-          workoutDate.getMonth() === currentMonth &&
-          workoutDate.getFullYear() === currentYear
+          workoutDate.month() === currentMonth &&
+          workoutDate.year() === currentYear
         );
       }).length;
 
       // Подсчет streak (последовательных дней)
       let streakDays = 0;
-      // TODO: Реализовать подсчет streakDays
+      // Улучшенный подсчет последовательных дней тренировок
+      const sortedDates = workouts
+        .map((w) => moment(w.date).startOf("day").valueOf())
+        .sort((a, b) => b - a); // Сортировка от новых к старым
+
+      if (sortedDates.length > 0) {
+        let currentStreak = 1;
+        let maxStreak = 1;
+
+        // Проверка, была ли тренировка сегодня
+        const today = moment().startOf("day").valueOf();
+        const yesterdayDate = moment()
+          .subtract(1, "day")
+          .startOf("day")
+          .valueOf();
+
+        let streakStartDate = sortedDates[0] === today ? today : null;
+
+        // Если первая дата не сегодня, начинаем с 0
+        if (streakStartDate === null) {
+          currentStreak = 0;
+          maxStreak = 0;
+        }
+
+        for (let i = 1; i < sortedDates.length; i++) {
+          const curr = sortedDates[i - 1];
+          const prev = sortedDates[i];
+
+          const diff = Math.round((curr - prev) / (24 * 60 * 60 * 1000));
+
+          if (diff === 1) {
+            // Последовательные дни
+            currentStreak++;
+            if (!streakStartDate && i === 1 && curr === yesterdayDate) {
+              streakStartDate = curr;
+            }
+          } else if (diff > 1) {
+            // Разрыв последовательности
+            if (currentStreak > maxStreak) {
+              maxStreak = currentStreak;
+            }
+            currentStreak = 1;
+            streakStartDate = null;
+          }
+        }
+
+        streakDays = Math.max(currentStreak, maxStreak);
+      }
 
       setUserStats({
         totalWorkouts,
@@ -112,14 +167,39 @@ const HomePage = () => {
     navigate("/settings");
   };
 
+  // Функция для отображения календаря
   const handleCalendar = () => {
-    // Функционал календаря
-    console.log("Calendar clicked");
+    // Подготавливаем данные для календаря
+    const workoutsByDate = {};
+    workouts.forEach((workout) => {
+      const date = moment(workout.date);
+      const dateStr = date.format("YYYY-MM-DD");
+
+      if (!workoutsByDate[dateStr]) {
+        workoutsByDate[dateStr] = [];
+      }
+      workoutsByDate[dateStr].push(workout);
+    });
+
+    setCalendarWorkouts(workoutsByDate);
+    setCalendarOpen(true);
+    setDrawerOpen(false);
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
+  // Функция для закрытия календаря
+  const handleCloseCalendar = () => {
+    setCalendarOpen(false);
+  };
+
+  // Функция для выбора даты в календаре
+  const handleDateSelect = (date) => {
+    setSelectedDate(date);
+    // Можно сделать что-то с выбранной датой, например, отфильтровать тренировки
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
   };
 
   const handleLogin = () => {
@@ -135,10 +215,46 @@ const HomePage = () => {
     updateUserSettings({ theme: newTheme });
   };
 
-  // Вычисляем цвета для градиентов в зависимости от темы
-  const gradientStart = theme.palette.mode === "dark" ? "#4A1D96" : "#8B5CF6"; // Фиолетовый цвет
-  const gradientEnd = theme.palette.mode === "dark" ? "#831843" : "#EC4899"; // Розовый цвет
-  const highlightColor = "#EC4899"; // Розовый для акцентов
+  // Обработчик для опций фитнес-зала
+  const handleGymOptions = () => {
+    setGymDialogOpen(true);
+    setDrawerOpen(false);
+  };
+
+  // Функция закрытия опций фитнес-зала
+  const handleCloseGymDialog = () => {
+    setGymDialogOpen(false);
+  };
+
+  // Функция перехода к групповым тренировкам
+  const handleGroupWorkouts = () => {
+    // В будущем можно добавить реальную навигацию к групповым тренировкам
+    alert(t("gym.groupWorkoutsComingSoon"));
+    setGymDialogOpen(false);
+  };
+
+  // Функция перехода к управлению членами зала
+  const handleMembers = () => {
+    // В будущем можно добавить реальную навигацию к управлению членами
+    alert(t("gym.membersManagementComingSoon"));
+    setGymDialogOpen(false);
+  };
+
+  // Функция перехода к аналитике
+  const handleAnalytics = () => {
+    // В будущем можно добавить реальную навигацию к аналитике
+    alert(t("gym.analyticsComingSoon"));
+    setGymDialogOpen(false);
+  };
+
+  // Вычисляем цвета в зависимости от темы
+  const accentColor =
+    theme.palette.mode === "dark"
+      ? theme.palette.primary.light
+      : theme.palette.primary.main;
+
+  const secondAccentColor =
+    theme.palette.mode === "dark" ? "#EC4899" : "#8B5CF6";
 
   // Рассчитываем прогресс для прогресс-баров
   const monthProgress =
@@ -151,1010 +267,856 @@ const HomePage = () => {
       ? Math.min(100, (userStats.streakDays / 7) * 100)
       : 0; // Предположим, цель - 7 дней подряд
 
-  // Рендер боковой панели
-  const sidebarContent = (
+  return (
     <Box
+      className="home-page"
       sx={{
-        width: 300,
-        height: "100%",
-        background: `linear-gradient(135deg, ${gradientStart} 0%, ${gradientEnd} 100%)`,
+        minHeight: "100vh",
+        backgroundColor:
+          theme.palette.mode === "dark"
+            ? alpha(theme.palette.background.default, 0.98)
+            : alpha(theme.palette.background.default, 0.97),
+        pt: 2,
+        pb: 10,
         position: "relative",
         overflow: "hidden",
-        transition: "all 0.3s ease",
-        display: "flex",
-        flexDirection: "column",
-        boxShadow: "0 0 40px rgba(0,0,0,0.2) inset",
-      }}
-      role="presentation"
-    >
-      {/* Декоративные элементы */}
-      <Box
-        sx={{
+        "&::before": {
+          content: '""',
           position: "absolute",
-          top: -80,
-          left: -80,
-          width: 200,
-          height: 200,
-          borderRadius: "50%",
-          background: `radial-gradient(circle, ${alpha(
-            highlightColor,
-            0.4
-          )} 0%, rgba(0,0,0,0) 70%)`,
-          zIndex: 0,
-          animation: "pulse 15s infinite ease-in-out",
-          "@keyframes pulse": {
-            "0%": { transform: "scale(1)" },
-            "50%": { transform: "scale(1.2)" },
-            "100%": { transform: "scale(1)" },
-          },
-        }}
-      />
-      <Box
-        sx={{
-          position: "absolute",
-          bottom: 100,
+          top: -100,
           right: -100,
-          width: 250,
-          height: 250,
+          width: 300,
+          height: 300,
           borderRadius: "50%",
           background: `radial-gradient(circle, ${alpha(
-            "#8B5CF6",
-            0.3
-          )} 0%, rgba(0,0,0,0) 70%)`,
+            theme.palette.primary.main,
+            0.2
+          )} 0%, ${alpha(theme.palette.primary.main, 0)} 70%)`,
           zIndex: 0,
-          animation: "float 20s infinite ease-in-out",
-          "@keyframes float": {
-            "0%": { transform: "translateY(0)" },
-            "50%": { transform: "translateY(-20px)" },
-            "100%": { transform: "translateY(0)" },
-          },
-        }}
-      />
-
-      {/* Верхние декоративные линии */}
-      <Box
-        sx={{
+        },
+        "&::after": {
+          content: '""',
           position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: "8px",
-          background: `linear-gradient(90deg, transparent, ${alpha(
-            "#fff",
-            0.3
-          )}, transparent)`,
-          zIndex: 1,
-        }}
-      />
-
-      {/* Шапка */}
-      <Box
-        sx={{
-          p: 3,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          position: "relative",
-          zIndex: 1,
-          mb: 2,
-        }}
-      >
-        {isAuthenticated ? (
-          <>
-            <Avatar
-              sx={{
-                width: 90,
-                height: 90,
-                bgcolor: alpha("#EC4899", 0.9),
-                fontSize: "2rem",
-                fontWeight: "bold",
-                mb: 2,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
-                border: `3px solid ${alpha("#fff", 0.8)}`,
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  transform: "scale(1.05) rotate(5deg)",
-                  boxShadow: "0 12px 28px rgba(0,0,0,0.3)",
-                },
-              }}
-              onClick={handleProfile}
-            >
-              {user?.name.charAt(0).toUpperCase()}
-            </Avatar>
-            <Typography
-              variant="h5"
-              sx={{
-                fontWeight: "bold",
-                textAlign: "center",
-                color: "#fff",
-                textShadow: "0 2px 10px rgba(0,0,0,0.3)",
-                letterSpacing: "0.5px",
-              }}
-            >
-              {user?.name}
-            </Typography>
-            <Box
-              sx={{
-                mt: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-              }}
-            >
-              <Typography
-                variant="body2"
-                sx={{
-                  opacity: 0.8,
-                  textAlign: "center",
-                  color: "#fff",
-                  fontWeight: "medium",
-                }}
-              >
-                {t("home.lastLogin")}:{" "}
-                {format(new Date(), "PPP", { locale: dateLocale })}
-              </Typography>
-            </Box>
-          </>
-        ) : (
+          bottom: -100,
+          left: -100,
+          width: 300,
+          height: 300,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${alpha(
+            theme.palette.secondary.main,
+            0.2
+          )} 0%, ${alpha(theme.palette.secondary.main, 0)} 70%)`,
+          zIndex: 0,
+        },
+      }}
+    >
+      <Container maxWidth="lg" sx={{ position: "relative", zIndex: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 4,
+          }}
+        >
           <Box
             sx={{
-              p: 3,
-              textAlign: "center",
-              background: `linear-gradient(135deg, ${alpha(
-                "#fff",
-                0.1
-              )} 0%, ${alpha("#fff", 0.05)} 100%)`,
-              borderRadius: "16px",
-              backdropFilter: "blur(10px)",
-              border: `1px solid ${alpha("#fff", 0.1)}`,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              cursor: "pointer",
             }}
+            onClick={handleProfile}
           >
-            <Typography
-              variant="h6"
+            <Avatar
               sx={{
-                mb: 2,
-                color: "#fff",
-                fontWeight: "bold",
-                textShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                width: 50,
+                height: 50,
+                border: `2px solid ${accentColor}`,
+                boxShadow: `0 0 10px ${alpha(accentColor, 0.4)}`,
+                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
               }}
             >
-              {t("auth.notLoggedIn")}
+              {user?.displayName ? user.displayName.charAt(0) : "U"}
+            </Avatar>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                {user?.displayName || t("common.guest")}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {user?.email ? user.email : t("common.notLoggedIn")}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <IconButton
+              onClick={handleDrawerToggle}
+              color="primary"
+              sx={{
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                "&:hover": {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                },
+              }}
+            >
+              <MenuIcon />
+            </IconButton>
+
+            <IconButton
+              onClick={handleThemeToggle}
+              color="primary"
+              className="theme-toggle-icon"
+              sx={{
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                "&:hover": {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                },
+              }}
+            >
+              {theme.palette.mode === "dark" ? (
+                <LightModeIcon />
+              ) : (
+                <DarkModeIcon />
+              )}
+            </IconButton>
+
+            <IconButton
+              onClick={handleAddWorkout}
+              color="primary"
+              sx={{
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                "&:hover": {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                },
+              }}
+            >
+              <AddIcon />
+            </IconButton>
+
+            <IconButton
+              onClick={handleSettings}
+              color="primary"
+              sx={{
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                "&:hover": {
+                  backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                },
+              }}
+            >
+              <SettingsIcon />
+            </IconButton>
+          </Box>
+        </Box>
+
+        {/* Карточки статистики */}
+        <Grid container spacing={3} mb={4}>
+          <Grid item xs={12} sm={4}>
+            <Card
+              sx={{
+                borderRadius: 4,
+                height: "100%",
+                background: `linear-gradient(135deg, ${alpha(
+                  theme.palette.primary.main,
+                  0.05
+                )} 0%, ${alpha(theme.palette.primary.main, 0.15)} 100%)`,
+                boxShadow: `0 10px 20px ${alpha(
+                  theme.palette.primary.main,
+                  0.1
+                )}`,
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                position: "relative",
+                overflow: "hidden",
+                "&:hover": {
+                  transform: "translateY(-5px)",
+                  boxShadow: `0 15px 30px ${alpha(
+                    theme.palette.primary.main,
+                    0.15
+                  )}`,
+                },
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  width: 80,
+                  height: 80,
+                  background: `radial-gradient(circle, ${alpha(
+                    theme.palette.primary.main,
+                    0.2
+                  )} 0%, transparent 70%)`,
+                  borderRadius: "0 0 0 100%",
+                },
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 2,
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                    {t("stats.totalWorkouts")}
+                  </Typography>
+                  <Avatar
+                    sx={{
+                      bgcolor: theme.palette.primary.main,
+                      width: 40,
+                      height: 40,
+                      boxShadow: `0 4px 8px ${alpha(
+                        theme.palette.primary.main,
+                        0.3
+                      )}`,
+                    }}
+                  >
+                    <FitnessCenterIcon />
+                  </Avatar>
+                </Box>
+                <Typography variant="h4" sx={{ fontWeight: "bold", mb: 1 }}>
+                  {userStats.totalWorkouts}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {t("stats.totalWorkoutsDesc")}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={4}>
+            <Card
+              sx={{
+                borderRadius: 4,
+                height: "100%",
+                background: `linear-gradient(135deg, ${alpha(
+                  secondAccentColor,
+                  0.05
+                )} 0%, ${alpha(secondAccentColor, 0.15)} 100%)`,
+                boxShadow: `0 10px 20px ${alpha(secondAccentColor, 0.1)}`,
+                border: `1px solid ${alpha(secondAccentColor, 0.2)}`,
+                transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                position: "relative",
+                overflow: "hidden",
+                "&:hover": {
+                  transform: "translateY(-5px)",
+                  boxShadow: `0 15px 30px ${alpha(secondAccentColor, 0.15)}`,
+                },
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  width: 80,
+                  height: 80,
+                  background: `radial-gradient(circle, ${alpha(
+                    secondAccentColor,
+                    0.2
+                  )} 0%, transparent 70%)`,
+                  borderRadius: "0 0 0 100%",
+                },
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 2,
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                    {t("stats.thisMonth")}
+                  </Typography>
+                  <Avatar
+                    sx={{
+                      bgcolor: secondAccentColor,
+                      width: 40,
+                      height: 40,
+                      boxShadow: `0 4px 8px ${alpha(secondAccentColor, 0.3)}`,
+                    }}
+                  >
+                    <CalendarMonthIcon />
+                  </Avatar>
+                </Box>
+                <Typography variant="h4" sx={{ fontWeight: "bold", mb: 1 }}>
+                  {userStats.thisMonth}
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 1 }}
+                  >
+                    {t("stats.monthGoal", { goal: 20 })}
+                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={monthProgress}
+                    sx={{
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: alpha(secondAccentColor, 0.2),
+                      "& .MuiLinearProgress-bar": {
+                        backgroundColor: secondAccentColor,
+                        borderRadius: 4,
+                      },
+                    }}
+                  />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={4}>
+            <Card
+              sx={{
+                borderRadius: 4,
+                height: "100%",
+                background: `linear-gradient(135deg, ${alpha(
+                  theme.palette.success.main,
+                  0.05
+                )} 0%, ${alpha(theme.palette.success.main, 0.15)} 100%)`,
+                boxShadow: `0 10px 20px ${alpha(
+                  theme.palette.success.main,
+                  0.1
+                )}`,
+                border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
+                transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                position: "relative",
+                overflow: "hidden",
+                "&:hover": {
+                  transform: "translateY(-5px)",
+                  boxShadow: `0 15px 30px ${alpha(
+                    theme.palette.success.main,
+                    0.15
+                  )}`,
+                },
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  width: 80,
+                  height: 80,
+                  background: `radial-gradient(circle, ${alpha(
+                    theme.palette.success.main,
+                    0.2
+                  )} 0%, transparent 70%)`,
+                  borderRadius: "0 0 0 100%",
+                },
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 2,
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                    {t("stats.streak")}
+                  </Typography>
+                  <Avatar
+                    sx={{
+                      bgcolor: theme.palette.success.main,
+                      width: 40,
+                      height: 40,
+                      boxShadow: `0 4px 8px ${alpha(
+                        theme.palette.success.main,
+                        0.3
+                      )}`,
+                    }}
+                  >
+                    <WhatshotIcon />
+                  </Avatar>
+                </Box>
+                <Typography variant="h4" sx={{ fontWeight: "bold", mb: 1 }}>
+                  {userStats.streakDays} {t("common.days")}
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 1 }}
+                  >
+                    {t("stats.streakGoal", { goal: 7 })}
+                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={streakProgress}
+                    sx={{
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: alpha(theme.palette.success.main, 0.2),
+                      "& .MuiLinearProgress-bar": {
+                        backgroundColor: theme.palette.success.main,
+                        borderRadius: 4,
+                      },
+                    }}
+                  />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Заголовок для недавних тренировок */}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 3,
+          }}
+        >
+          <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+            {t("workout.recentWorkouts")}
+          </Typography>
+          <Button
+            variant="outlined"
+            onClick={handleCalendar}
+            startIcon={<CalendarMonthIcon />}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: "bold",
+              borderWidth: 2,
+              "&:hover": {
+                borderWidth: 2,
+              },
+            }}
+          >
+            {t("workout.viewCalendar")}
+          </Button>
+        </Box>
+
+        {/* Список недавних тренировок */}
+        {isLoading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : error ? (
+          <Paper
+            className="error-message"
+            sx={{
+              p: 3,
+              borderRadius: 3,
+              bgcolor: alpha(theme.palette.error.main, 0.1),
+              color: theme.palette.error.main,
+              border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: "medium" }}>
+              {t("common.error")}
+            </Typography>
+            <Typography variant="body2">{error}</Typography>
+            <Box sx={{ mt: 2 }}>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => window.location.reload()}
+              >
+                {t("common.tryAgain")}
+              </Button>
+            </Box>
+          </Paper>
+        ) : workouts.length === 0 ? (
+          <Paper
+            sx={{
+              p: 4,
+              borderRadius: 3,
+              textAlign: "center",
+              background: `linear-gradient(135deg, ${alpha(
+                theme.palette.primary.main,
+                0.05
+              )} 0%, ${alpha(theme.palette.primary.main, 0.1)} 100%)`,
+              border: `1px dashed ${alpha(theme.palette.primary.main, 0.3)}`,
+            }}
+          >
+            <Box sx={{ mb: 2 }}>
+              <FitnessCenterIcon
+                sx={{
+                  fontSize: 60,
+                  color: alpha(theme.palette.text.primary, 0.3),
+                }}
+              />
+            </Box>
+            <Typography variant="h6" sx={{ mb: 1, fontWeight: "medium" }}>
+              {t("workout.noWorkouts")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              {t("workout.startTracking")}
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={handleAddWorkout}
+              startIcon={<AddIcon />}
+              sx={{
+                borderRadius: 3,
+                px: 3,
+                py: 1.5,
+                backgroundImage: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                textTransform: "none",
+                fontWeight: "bold",
+                boxShadow: `0 10px 20px ${alpha(
+                  theme.palette.primary.main,
+                  0.2
+                )}`,
+              }}
+            >
+              {t("workout.addWorkout")}
+            </Button>
+          </Paper>
+        ) : (
+          <Grid container spacing={3}>
+            {workouts
+              .sort(
+                (a, b) => moment(b.date).valueOf() - moment(a.date).valueOf()
+              )
+              .slice(0, 6)
+              .map((workout, index) => (
+                <Zoom
+                  in={true}
+                  style={{ transitionDelay: `${index * 50}ms` }}
+                  key={workout.id}
+                >
+                  <Grid item xs={12} md={6}>
+                    <WorkoutCard
+                      workout={workout}
+                      deleteWorkout={deleteWorkout}
+                    />
+                  </Grid>
+                </Zoom>
+              ))}
+          </Grid>
+        )}
+
+        {workouts.length > 6 && (
+          <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+            <Button
+              variant="outlined"
+              onClick={() => navigate("/workouts")}
+              sx={{
+                borderRadius: 2,
+                px: 4,
+                py: 1,
+                textTransform: "none",
+                fontWeight: "medium",
+                borderWidth: 2,
+                "&:hover": {
+                  borderWidth: 2,
+                },
+              }}
+            >
+              {t("workout.viewAll")}
+            </Button>
+          </Box>
+        )}
+      </Container>
+
+      {/* Боковое меню */}
+      <Drawer anchor="left" open={drawerOpen} onClose={handleDrawerToggle}>
+        <Box sx={{ width: 280, p: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 3,
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+              {t("common.menu")}
+            </Typography>
+            <IconButton onClick={handleDrawerToggle}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          <List>
+            <ListItem
+              button
+              onClick={() => {
+                navigate("/");
+                setDrawerOpen(false);
+              }}
+              sx={{ borderRadius: 2, mb: 1 }}
+            >
+              <ListItemIcon>
+                <HomeIcon color="primary" />
+              </ListItemIcon>
+              <ListItemText primary={t("nav.home")} />
+            </ListItem>
+
+            <ListItem
+              button
+              onClick={handleProfile}
+              sx={{ borderRadius: 2, mb: 1 }}
+            >
+              <ListItemIcon>
+                <AccountCircleIcon color="primary" />
+              </ListItemIcon>
+              <ListItemText primary={t("nav.account")} />
+            </ListItem>
+
+            <ListItem
+              button
+              onClick={handleCalendar}
+              sx={{ borderRadius: 2, mb: 1 }}
+            >
+              <ListItemIcon>
+                <CalendarMonthIcon color="primary" />
+              </ListItemIcon>
+              <ListItemText primary={t("nav.calendar")} />
+            </ListItem>
+
+            <ListItem
+              button
+              onClick={handleSettings}
+              sx={{ borderRadius: 2, mb: 1 }}
+            >
+              <ListItemIcon>
+                <SettingsIcon color="primary" />
+              </ListItemIcon>
+              <ListItemText primary={t("nav.settings")} />
+            </ListItem>
+
+            <ListItem
+              button
+              onClick={handleGymOptions}
+              sx={{ borderRadius: 2, mb: 1 }}
+            >
+              <ListItemIcon>
+                <BusinessCenterIcon color="primary" />
+              </ListItemIcon>
+              <ListItemText primary={t("nav.gym")} />
+            </ListItem>
+
+            {isAuthenticated ? (
+              <ListItem
+                button
+                onClick={handleLogout}
+                sx={{ borderRadius: 2, mb: 1 }}
+              >
+                <ListItemIcon>
+                  <LogoutIcon color="error" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={t("auth.logout")}
+                  sx={{ color: theme.palette.error.main }}
+                />
+              </ListItem>
+            ) : (
+              <ListItem
+                button
+                onClick={handleLogin}
+                sx={{ borderRadius: 2, mb: 1 }}
+              >
+                <ListItemIcon>
+                  <LogoutIcon color="primary" />
+                </ListItemIcon>
+                <ListItemText primary={t("auth.login")} />
+              </ListItem>
+            )}
+          </List>
+        </Box>
+      </Drawer>
+
+      {/* Диалоговое окно опций фитнес-зала */}
+      <Dialog
+        open={gymDialogOpen}
+        onClose={handleCloseGymDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            overflow: "hidden",
+            backgroundImage: `linear-gradient(135deg, ${alpha(
+              theme.palette.background.paper,
+              0.95
+            )} 0%, ${theme.palette.background.paper} 100%)`,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            backgroundImage: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+            color: "#fff",
+            py: 2,
+          }}
+        >
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+          >
+            <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+              {t("gym.fitnessGymOptions")}
+            </Typography>
+            <IconButton onClick={handleCloseGymDialog} sx={{ color: "#fff" }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ py: 3 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <Button
+                variant="outlined"
+                fullWidth
+                startIcon={<GroupIcon />}
+                onClick={handleGroupWorkouts}
+                sx={{
+                  py: 2,
+                  borderRadius: 2,
+                  justifyContent: "flex-start",
+                  borderWidth: 2,
+                  "&:hover": {
+                    borderWidth: 2,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                  },
+                }}
+              >
+                <Box textAlign="left">
+                  <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                    {t("gym.groupWorkouts")}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {t("gym.manageGroupWorkouts")}
+                  </Typography>
+                </Box>
+              </Button>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Button
+                variant="outlined"
+                fullWidth
+                startIcon={<PersonIcon />}
+                onClick={handleMembers}
+                sx={{
+                  py: 2,
+                  borderRadius: 2,
+                  justifyContent: "flex-start",
+                  borderWidth: 2,
+                  "&:hover": {
+                    borderWidth: 2,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                  },
+                }}
+              >
+                <Box textAlign="left">
+                  <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                    {t("gym.members")}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {t("gym.manageMembers")}
+                  </Typography>
+                </Box>
+              </Button>
+            </Grid>
+            <Grid item xs={12}>
+              <Button
+                variant="outlined"
+                fullWidth
+                startIcon={<TimelineIcon />}
+                onClick={handleAnalytics}
+                sx={{
+                  py: 2,
+                  borderRadius: 2,
+                  justifyContent: "flex-start",
+                  borderWidth: 2,
+                  "&:hover": {
+                    borderWidth: 2,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                  },
+                }}
+              >
+                <Box textAlign="left">
+                  <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                    {t("gym.analytics")}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {t("gym.viewAnalytics")}
+                  </Typography>
+                </Box>
+              </Button>
+            </Grid>
+          </Grid>
+
+          <Box mt={4}>
+            <Typography variant="h6" gutterBottom>
+              {t("gym.promoteYourGym")}
+            </Typography>
+            <Typography variant="body2" paragraph>
+              {t("gym.promoteGymDescription")}
             </Typography>
             <Button
               variant="contained"
               fullWidth
-              onClick={handleLogin}
               sx={{
-                borderRadius: "12px",
-                py: 1.2,
-                textTransform: "none",
-                fontSize: "1rem",
-                fontWeight: "bold",
-                boxShadow: "0 8px 20px rgba(0,0,0,0.2)",
-                transition: "all 0.3s ease",
-                background: `linear-gradient(90deg, #fff, ${alpha(
-                  "#fff",
-                  0.8
-                )})`,
-                color: "#7C3AED",
-                "&:hover": {
-                  transform: "translateY(-3px)",
-                  boxShadow: "0 12px 24px rgba(0,0,0,0.3)",
-                  background: "#fff",
-                },
+                borderRadius: 2,
+                py: 1.5,
+                backgroundImage: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
               }}
             >
-              {t("auth.login")}
+              {t("gym.getPremium")}
             </Button>
           </Box>
-        )}
-      </Box>
+        </DialogContent>
+      </Dialog>
 
-      {/* Основное меню */}
-      <List
-        sx={{
-          px: 2,
-          py: 1,
-          flex: 1,
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        <ListItem
-          button
-          onClick={() => {
-            setDrawerOpen(false);
-            navigate("/");
-          }}
-          sx={{
-            borderRadius: "16px",
-            mb: 1.5,
-            bgcolor: alpha("#fff", 0.15),
-            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-            backdropFilter: "blur(4px)",
-            transition: "all 0.3s ease",
-            "&:hover": {
-              transform: "translateX(5px)",
-              bgcolor: alpha("#fff", 0.2),
-              boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
-            },
-            p: 1.5,
-          }}
-        >
-          <ListItemIcon>
-            <HomeIcon
-              sx={{
-                color: "#fff",
-                fontSize: "1.8rem",
-                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))",
-              }}
-            />
-          </ListItemIcon>
-          <ListItemText
-            primary={t("home.home")}
-            primaryTypographyProps={{
-              fontWeight: "bold",
-              fontSize: "1.1rem",
-              color: "#fff",
-              letterSpacing: "0.5px",
-              textShadow: "0 1px 2px rgba(0,0,0,0.2)",
-            }}
-          />
-        </ListItem>
-
-        <ListItem
-          button
-          onClick={handleSettings}
-          sx={{
-            borderRadius: "16px",
-            mb: 1.5,
-            transition: "all 0.3s ease",
-            "&:hover": {
-              transform: "translateX(5px)",
-              bgcolor: alpha("#fff", 0.15),
-              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-            },
-            p: 1.5,
-          }}
-        >
-          <ListItemIcon>
-            <SettingsIcon
-              sx={{
-                color: "#fff",
-                opacity: 0.9,
-                fontSize: "1.8rem",
-                filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))",
-              }}
-            />
-          </ListItemIcon>
-          <ListItemText
-            primary={t("settings.settings")}
-            primaryTypographyProps={{
-              fontWeight: "medium",
-              fontSize: "1.1rem",
-              color: "#fff",
-              opacity: 0.9,
-              letterSpacing: "0.5px",
-            }}
-          />
-        </ListItem>
-
-        {isAuthenticated && (
-          <>
-            <ListItem
-              button
-              onClick={handleCalendar}
-              sx={{
-                borderRadius: "16px",
-                mb: 1.5,
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  transform: "translateX(5px)",
-                  bgcolor: alpha("#fff", 0.15),
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                },
-                p: 1.5,
-              }}
-            >
-              <ListItemIcon>
-                <CalendarIcon
-                  sx={{
-                    color: "#fff",
-                    opacity: 0.9,
-                    fontSize: "1.8rem",
-                    filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))",
-                  }}
-                />
-              </ListItemIcon>
-              <ListItemText
-                primary={t("home.calendar")}
-                primaryTypographyProps={{
-                  fontWeight: "medium",
-                  fontSize: "1.1rem",
-                  color: "#fff",
-                  opacity: 0.9,
-                  letterSpacing: "0.5px",
-                }}
-              />
-            </ListItem>
-
-            <ListItem
-              button
-              onClick={handleProfile}
-              sx={{
-                borderRadius: "16px",
-                mb: 1.5,
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  transform: "translateX(5px)",
-                  bgcolor: alpha("#fff", 0.15),
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                },
-                p: 1.5,
-              }}
-            >
-              <ListItemIcon>
-                <PersonIcon
-                  sx={{
-                    color: "#fff",
-                    opacity: 0.9,
-                    fontSize: "1.8rem",
-                    filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))",
-                  }}
-                />
-              </ListItemIcon>
-              <ListItemText
-                primary={t("auth.profile")}
-                primaryTypographyProps={{
-                  fontWeight: "medium",
-                  fontSize: "1.1rem",
-                  color: "#fff",
-                  opacity: 0.9,
-                  letterSpacing: "0.5px",
-                }}
-              />
-            </ListItem>
-          </>
-        )}
-      </List>
-
-      {/* Нижняя часть */}
-      <Box
-        sx={{
-          p: 3,
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
-        {isAuthenticated && (
-          <Button
-            variant="outlined"
-            color="error"
-            fullWidth
-            onClick={handleLogout}
-            startIcon={<LogoutIcon />}
-            sx={{
-              mb: 3,
-              borderRadius: "12px",
-              py: 1.2,
-              textTransform: "none",
-              fontWeight: "medium",
-              borderWidth: 2,
-              transition: "all 0.3s ease",
-              "&:hover": {
-                borderWidth: 2,
-                bgcolor: alpha(theme.palette.error.main, 0.1),
-                transform: "translateY(-2px)",
-              },
-            }}
-          >
-            {t("auth.logout")}
-          </Button>
-        )}
-
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            flexDirection: "column",
-          }}
-        >
-          <IconButton
-            onClick={handleThemeToggle}
-            sx={{
-              bgcolor: theme.palette.background.paper,
-              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-              color: highlightColor,
-              width: 45,
-              height: 45,
-              transition: "all 0.3s ease",
-              "&:hover": {
-                transform: "rotate(30deg)",
-                bgcolor: alpha(highlightColor, 0.1),
-              },
-            }}
-          >
-            {theme.palette.mode === "dark" ? (
-              <LightModeIcon />
-            ) : (
-              <DarkModeIcon />
-            )}
-          </IconButton>
-          <Typography
-            variant="caption"
-            display="block"
-            sx={{
-              mt: 1.5,
-              opacity: 0.6,
-              textAlign: "center",
-              fontWeight: "medium",
-            }}
-          >
-            {t("common.appName")} v1.0
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Добавим подпись разработчика внизу меню */}
-      <Box
-        sx={{
-          textAlign: "center",
-          p: 2,
-          mt: "auto",
-          color: alpha("#fff", 0.7),
-          fontSize: "0.85rem",
-          borderTop: `1px solid ${alpha("#fff", 0.1)}`,
-          background: alpha("#000", 0.1),
-        }}
-      >
-        <Typography
-          variant="body2"
-          sx={{
-            fontWeight: "medium",
-            opacity: 0.9,
-            mb: 0.5,
-          }}
-        >
-          Fitness Tracker v1.0
-        </Typography>
-        <Typography
-          variant="caption"
-          sx={{
-            opacity: 0.8,
-          }}
-        >
-          Developed by Iusif Mamedov
-        </Typography>
-      </Box>
-    </Box>
-  );
-
-  // Кнопка бургер меню (более современный дизайн)
-  const burgerButton = (
-    <IconButton
-      onClick={handleDrawerToggle}
-      aria-label="menu"
-      sx={{
-        position: "fixed",
-        top: "15px",
-        left: "15px",
-        zIndex: 1100,
-        backgroundColor: alpha(gradientStart, 0.2),
-        backdropFilter: "blur(10px)",
-        color: theme.palette.mode === "dark" ? "#fff" : "#222",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-        width: "45px",
-        height: "45px",
-        border: `1px solid ${alpha("#fff", 0.1)}`,
-        transition: "all 0.3s ease",
-        "&:hover": {
-          transform: "rotate(90deg)",
-          backgroundColor: alpha(gradientEnd, 0.3),
-        },
-      }}
-    >
-      <MenuIcon />
-    </IconButton>
-  );
-
-  // Основное содержимое
-  const mainContent = (
-    <Container
-      maxWidth="lg"
-      sx={{
-        mt: 2,
-        mb: 4,
-        px: { xs: 2, sm: 3 },
-      }}
-    >
-      <Grow in={true} timeout={800}>
-        <Paper
-          elevation={0}
-          sx={{
-            mb: 4,
-            borderRadius: 4,
-            overflow: "hidden",
-            position: "relative",
-            backgroundImage: `linear-gradient(120deg, ${alpha(
-              highlightColor,
-              0.1
-            )} 0%, ${alpha(highlightColor, 0.05)} 100%)`,
-            backgroundSize: "cover",
-            boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
-            border: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
-          }}
-        >
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              opacity: 0.05,
-              backgroundImage:
-                'url("https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80")',
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              mixBlendMode: "overlay",
-            }}
-          />
-
-          <CardContent
-            sx={{ position: "relative", py: 4, px: { xs: 3, md: 5 } }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: { xs: "column", md: "row" },
-                alignItems: { xs: "flex-start", md: "center" },
-                justifyContent: "space-between",
-                mb: 4,
-              }}
-            >
-              <Box>
-                <Typography
-                  variant="h4"
-                  gutterBottom
-                  sx={{
-                    fontWeight: "bold",
-                    fontSize: { xs: "1.75rem", md: "2.25rem" },
-                    backgroundImage: `linear-gradient(90deg, ${
-                      theme.palette.text.primary
-                    } 0%, ${alpha(theme.palette.text.primary, 0.7)} 100%)`,
-                    backgroundClip: "text",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                  }}
-                >
-                  {isAuthenticated && user
-                    ? t("common.hello", { name: user.name })
-                    : t("common.welcome")}
-                </Typography>
-
-                <Typography
-                  variant="body1"
-                  sx={{ mb: 1, color: alpha(theme.palette.text.primary, 0.7) }}
-                >
-                  {format(new Date(), "d MMMM yyyy, EEEE", {
-                    locale: dateLocale,
-                  })}
-                </Typography>
-
-                {isAuthenticated && (
-                  <Chip
-                    size="small"
-                    icon={<BoltIcon fontSize="small" />}
-                    label={
-                      userStats.streakDays > 0
-                        ? `${userStats.streakDays} ${t("home.streakDays")}`
-                        : t("common.today")
-                    }
-                    sx={{
-                      bgcolor:
-                        userStats.streakDays > 3
-                          ? alpha(theme.palette.success.main, 0.1)
-                          : alpha(theme.palette.primary.main, 0.1),
-                      color:
-                        userStats.streakDays > 3
-                          ? theme.palette.success.main
-                          : theme.palette.primary.main,
-                      mt: 1,
-                    }}
-                  />
-                )}
-              </Box>
-
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleAddWorkout}
-                sx={{
-                  mt: { xs: 2, md: 0 },
-                  backgroundImage: `linear-gradient(45deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                  boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
-                  borderRadius: "24px",
-                  px: 3,
-                  py: 1,
-                  "&:hover": {
-                    boxShadow: "0 6px 15px rgba(0,0,0,0.2)",
-                    transform: "translateY(-2px)",
-                  },
-                  transition: "all 0.2s ease-in-out",
-                }}
-              >
-                {t("home.newWorkout")}
-              </Button>
-            </Box>
-
-            <Box
-              sx={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 3,
-                justifyContent: "center",
-              }}
-            >
-              <Zoom in={true} style={{ transitionDelay: "100ms" }}>
-                <Card
-                  sx={{
-                    minWidth: { xs: "100%", sm: "200px" },
-                    flexGrow: 1,
-                    borderRadius: 3,
-                    background: theme.palette.background.paper,
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-                    overflow: "visible",
-                    position: "relative",
-                    "&:hover": {
-                      transform: "translateY(-5px)",
-                      transition: "transform 0.3s ease",
-                    },
-                  }}
-                >
-                  <CardContent sx={{ textAlign: "center", py: 3 }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: alpha(theme.palette.primary.main, 0.1),
-                        color: theme.palette.primary.main,
-                        width: 56,
-                        height: 56,
-                        mb: 2,
-                        mx: "auto",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                      }}
-                    >
-                      <FitnessCenterIcon />
-                    </Avatar>
-                    <Typography variant="h3" sx={{ fontWeight: "bold", mb: 1 }}>
-                      {userStats.totalWorkouts}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {t("home.totalWorkouts")}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Zoom>
-
-              <Zoom in={true} style={{ transitionDelay: "200ms" }}>
-                <Card
-                  sx={{
-                    minWidth: { xs: "100%", sm: "200px" },
-                    flexGrow: 1,
-                    borderRadius: 3,
-                    background: theme.palette.background.paper,
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-                    overflow: "visible",
-                    position: "relative",
-                    "&:hover": {
-                      transform: "translateY(-5px)",
-                      transition: "transform 0.3s ease",
-                    },
-                  }}
-                >
-                  <CardContent sx={{ textAlign: "center", py: 3 }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: alpha(theme.palette.info.main, 0.1),
-                        color: theme.palette.info.main,
-                        width: 56,
-                        height: 56,
-                        mb: 2,
-                        mx: "auto",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                      }}
-                    >
-                      <CalendarIcon />
-                    </Avatar>
-                    <Typography variant="h3" sx={{ fontWeight: "bold", mb: 1 }}>
-                      {userStats.thisMonth}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {t("home.thisMonth")}
-                    </Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={monthProgress}
-                      sx={{
-                        mt: 2,
-                        height: 6,
-                        borderRadius: 3,
-                        bgcolor: alpha(theme.palette.info.main, 0.1),
-                        "& .MuiLinearProgress-bar": {
-                          bgcolor: theme.palette.info.main,
-                          borderRadius: 3,
-                        },
-                      }}
-                    />
-                  </CardContent>
-                </Card>
-              </Zoom>
-
-              <Zoom in={true} style={{ transitionDelay: "300ms" }}>
-                <Card
-                  sx={{
-                    minWidth: { xs: "100%", sm: "200px" },
-                    flexGrow: 1,
-                    borderRadius: 3,
-                    background: theme.palette.background.paper,
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-                    overflow: "visible",
-                    position: "relative",
-                    "&:hover": {
-                      transform: "translateY(-5px)",
-                      transition: "transform 0.3s ease",
-                    },
-                  }}
-                >
-                  <CardContent sx={{ textAlign: "center", py: 3 }}>
-                    <Avatar
-                      sx={{
-                        bgcolor: alpha(theme.palette.success.main, 0.1),
-                        color: theme.palette.success.main,
-                        width: 56,
-                        height: 56,
-                        mb: 2,
-                        mx: "auto",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                      }}
-                    >
-                      <WhatshotIcon />
-                    </Avatar>
-                    <Typography variant="h3" sx={{ fontWeight: "bold", mb: 1 }}>
-                      {userStats.streakDays}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {t("home.streakDays")}
-                    </Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={streakProgress}
-                      sx={{
-                        mt: 2,
-                        height: 6,
-                        borderRadius: 3,
-                        bgcolor: alpha(theme.palette.success.main, 0.1),
-                        "& .MuiLinearProgress-bar": {
-                          bgcolor: theme.palette.success.main,
-                          borderRadius: 3,
-                        },
-                      }}
-                    />
-                  </CardContent>
-                </Card>
-              </Zoom>
-            </Box>
-          </CardContent>
-        </Paper>
-      </Grow>
-
-      {/* Заголовок и карточки тренировок */}
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: "bold",
-            display: "flex",
-            alignItems: "center",
-            "&::before": {
-              content: '""',
-              display: "inline-block",
-              width: 4,
-              height: 24,
-              bgcolor: theme.palette.primary.main,
-              borderRadius: 4,
-              mr: 2,
-            },
-          }}
-        >
-          {t("home.myWorkouts")}
-        </Typography>
-      </Box>
-
-      {/* Карточки тренировок */}
-      {isLoading ? (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            my: 8,
-            flexDirection: "column",
-            alignItems: "center",
-          }}
-        >
-          <CircularProgress size={50} sx={{ mb: 2 }} />
-          <Typography variant="body1" color="text.secondary">
-            {t("common.loading")}
-          </Typography>
-        </Box>
-      ) : error ? (
-        <Typography color="error" sx={{ mt: 2 }}>
-          {error}
-        </Typography>
-      ) : workouts.length > 0 ? (
-        <Grid container spacing={3}>
-          {workouts
-            .slice()
-            .reverse()
-            .map((workout, index) => (
-              <Grow
-                in={true}
-                timeout={500 + index * 100}
-                key={workout._id || workout.id}
-              >
-                <Grid item xs={12} sm={6} md={4}>
-                  <WorkoutCard
-                    workout={workout}
-                    onDelete={() => deleteWorkout(workout._id || workout.id)}
-                    onClick={() =>
-                      navigate(`/workout/${workout._id || workout.id}`)
-                    }
-                  />
-                </Grid>
-              </Grow>
-            ))}
-        </Grid>
-      ) : (
-        <Paper
-          sx={{
-            py: 8,
-            px: 4,
-            textAlign: "center",
-            borderRadius: 4,
-            bgcolor:
-              theme.palette.mode === "dark"
-                ? alpha(theme.palette.primary.main, 0.05)
-                : alpha(theme.palette.primary.main, 0.02),
-            border: `1px dashed ${alpha(theme.palette.primary.main, 0.2)}`,
-          }}
-        >
-          <FitnessCenterIcon
-            sx={{
-              fontSize: 60,
-              color: alpha(theme.palette.text.secondary, 0.3),
-              mb: 2,
-            }}
-          />
-          <Typography variant="h6" gutterBottom color="text.secondary">
-            {t("home.noWorkouts")}
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleAddWorkout}
-            sx={{
-              mt: 3,
-              borderRadius: "24px",
-              px: 3,
-            }}
-          >
-            {t("home.newWorkout")}
-          </Button>
-        </Paper>
-      )}
-    </Container>
-  );
-
-  return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      {burgerButton}
-      <Drawer
-        anchor="left"
-        open={drawerOpen}
-        onClose={handleDrawerToggle}
-        variant="temporary"
-        sx={{
-          "& .MuiDrawer-paper": {
-            boxSizing: "border-box",
-            width: 300,
-            borderRight: "none",
-          },
-        }}
-      >
-        {sidebarContent}
-      </Drawer>
-
-      {/* Основное содержимое */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          pt: "90px",
-          pb: "20px",
-          minHeight: "100vh",
-          bgcolor: theme.palette.background.default,
-        }}
-      >
-        {mainContent}
-      </Box>
-
-      {/* Подпись разработчика */}
-      <Box
+      {/* Плавающие кнопки с обновленным дизайном */}
+      <Fab
+        color="primary"
+        aria-label="add-workout"
         sx={{
           position: "fixed",
-          bottom: 10,
-          right: 15,
-          zIndex: 10,
-          opacity: 0.7,
-          fontSize: "0.7rem",
-          color: theme.palette.text.secondary,
-          fontStyle: "italic",
-          fontWeight: 500,
-          textAlign: "right",
+          bottom: 90,
+          right: 24,
+          boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
+          backgroundImage: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+          color: "white",
+          transition: "all 0.3s ease",
           "&:hover": {
-            opacity: 1,
+            transform: "scale(1.1)",
+            boxShadow: `0 12px 24px ${alpha(theme.palette.primary.main, 0.4)}`,
           },
         }}
+        onClick={handleAddWorkout}
       >
-        Developed by Iusif Mamedov
-        <Box
-          component="span"
-          sx={{
-            display: "block",
-            fontSize: "0.65rem",
-            mt: 0.5,
-          }}
-        >
-          Premium Fitness App
-        </Box>
-      </Box>
+        <AddIcon />
+      </Fab>
 
-      {/* Плавающая кнопка добавления тренировки */}
-      <Zoom
-        in={true}
-        timeout={500}
-        style={{
-          transitionDelay: "500ms",
+      <Fab
+        color="secondary"
+        aria-label="gym-options"
+        sx={{
+          position: "fixed",
+          bottom: 24,
+          right: 24,
+          boxShadow: `0 8px 16px ${alpha(theme.palette.secondary.main, 0.3)}`,
+          backgroundImage: `linear-gradient(45deg, ${theme.palette.secondary.main}, ${theme.palette.secondary.dark})`,
+          color: "white",
+          transition: "all 0.3s ease",
+          "&:hover": {
+            transform: "scale(1.1)",
+            boxShadow: `0 12px 24px ${alpha(
+              theme.palette.secondary.main,
+              0.4
+            )}`,
+          },
         }}
+        onClick={handleGymOptions}
       >
-        <Fab
-          color="primary"
-          aria-label="add"
-          sx={{
-            position: "fixed",
-            bottom: 24,
-            right: 24,
-            backgroundImage: `linear-gradient(45deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-            boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
-            "&:hover": {
-              boxShadow: "0 6px 15px rgba(0,0,0,0.3)",
-              transform: "translateY(-2px)",
-            },
-            transition: "all 0.3s ease",
-          }}
-          onClick={handleAddWorkout}
-        >
-          <AddIcon />
-        </Fab>
-      </Zoom>
+        <BusinessCenterIcon />
+      </Fab>
     </Box>
   );
 };
